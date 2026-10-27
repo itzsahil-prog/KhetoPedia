@@ -88,7 +88,7 @@ class _SoilTestFormScreenState extends State<SoilTestFormScreen> {
               onPressed: () {
                 if (_formKey.currentState!.validate()) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Soil test submitted successfully')),
+                    SnackBar(content: Text(l.soilTestSubmitted)),
                   );
                   Navigator.pop(context);
                 }

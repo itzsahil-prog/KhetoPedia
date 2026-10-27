@@ -25,6 +25,8 @@ class StringsHi extends AppStrings {
   @override String get themeLight   => 'लाइट';
   @override String get themeDark    => 'डार्क';
   @override String get themeSystem  => 'सिस्टम';
+  @override String get languageEnglish => 'English';
+  @override String get languageHindi   => 'हिन्दी';
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   @override String get authLogin               => 'साइन इन';
@@ -136,6 +138,9 @@ class StringsHi extends AppStrings {
   @override String get scanConfidence           => 'विश्वास';
   @override String get scanRecommendations      => 'सिफारिशें';
   @override String get scanSelectField          => 'खेत चुनें (वैकल्पिक)';
+  @override String get scanInstructions         => 'रोगों का पता लगाने के लिए अपनी फसल की पत्ती की फोटो लें या अपलोड करें';
+  @override String get scanPermissionDenied     => 'अनुमति अस्वीकृत';
+  @override String get scanError                => 'छवि अपलोड करने में त्रुटि। कृपया पुनः प्रयास करें।';
 
   // ── Soil Analysis ─────────────────────────────────────────────────────────
   @override String get soilTitle             => 'मिट्टी विश्लेषण';
@@ -153,6 +158,7 @@ class StringsHi extends AppStrings {
   @override String get soilStatusLow         => 'कम';
   @override String get soilStatusAdequate    => 'पर्याप्त';
   @override String get soilStatusHigh        => 'उच्च';
+  @override String get soilTestSubmitted     => 'मिट्टी परीक्षण सफलतापूर्वक सबमिट हुआ';
 
   // ── Fields Management ─────────────────────────────────────────────────────
   @override String get fieldsTitle           => 'मेरे खेत';

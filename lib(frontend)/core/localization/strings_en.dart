@@ -25,6 +25,8 @@ class StringsEn extends AppStrings {
   @override String get themeLight   => 'Light';
   @override String get themeDark    => 'Dark';
   @override String get themeSystem  => 'System';
+  @override String get languageEnglish => 'English';
+  @override String get languageHindi   => 'हिन्दी';
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   @override String get authLogin               => 'Sign In';
@@ -136,6 +138,9 @@ class StringsEn extends AppStrings {
   @override String get scanConfidence           => 'Confidence';
   @override String get scanRecommendations      => 'Recommendations';
   @override String get scanSelectField          => 'Select Field (Optional)';
+  @override String get scanInstructions         => 'Take or upload a photo of your crop leaf to detect diseases';
+  @override String get scanPermissionDenied     => 'Permission denied';
+  @override String get scanError                => 'Error uploading image. Please try again.';
 
   // ── Soil Analysis ─────────────────────────────────────────────────────────
   @override String get soilTitle             => 'Soil Analysis';
@@ -153,6 +158,7 @@ class StringsEn extends AppStrings {
   @override String get soilStatusLow         => 'Low';
   @override String get soilStatusAdequate    => 'Adequate';
   @override String get soilStatusHigh        => 'High';
+  @override String get soilTestSubmitted     => 'Soil test submitted successfully';
 
   // ── Fields Management ─────────────────────────────────────────────────────
   @override String get fieldsTitle           => 'My Fields';

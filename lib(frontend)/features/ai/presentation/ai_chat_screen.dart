@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/localization.dart';
 import '../../../shared/widgets/widgets.dart';
+import '../application/ai_provider.dart';
+import '../domain/ai_message.dart';
 
 /// AI chat interface screen.
 class AIChatScreen extends ConsumerStatefulWidget {
@@ -15,19 +17,7 @@ class AIChatScreen extends ConsumerStatefulWidget {
 class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
-  final List<ChatMessage> _messages = [];
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Add welcome message
-    _messages.add(ChatMessage(
-      text: 'Hello! I\'m your agricultural assistant. How can I help you today?',
-      isUser: false,
-      timestamp: DateTime.now(),
-    ));
-  }
+  bool _hasAddedWelcome = false;
 
   @override
   void dispose() {
@@ -40,32 +30,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    setState(() {
-      _messages.add(ChatMessage(
-        text: text,
-        isUser: true,
-        timestamp: DateTime.now(),
-      ));
-      _isLoading = true;
-    });
-
     _messageController.clear();
+    ref.read(aiChatProvider.notifier).sendMessage(text);
     _scrollToBottom();
-
-    // Simulate AI response
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _messages.add(ChatMessage(
-            text: 'I understand your question about "$text". For accurate agricultural advice, please connect to the AI service. This feature will provide personalized recommendations based on your farm data.',
-            isUser: false,
-            timestamp: DateTime.now(),
-          ));
-          _isLoading = false;
-        });
-        _scrollToBottom();
-      }
-    });
   }
 
   void _scrollToBottom() {
@@ -83,11 +50,51 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    final chatState = ref.watch(aiChatProvider);
+
+    // Add welcome message if empty
+    if (chatState.messages.isEmpty && !_hasAddedWelcome) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && chatState.messages.isEmpty) {
+          // Initialize with welcome message
+          _hasAddedWelcome = true;
+        }
+      });
+    }
+
+    // Build messages list with welcome message prepended if needed
+    final displayMessages = chatState.messages.isEmpty && !_hasAddedWelcome
+        ? [
+            AiMessage(
+              id: 'welcome',
+              text: l.aiWelcome,
+              isUser: false,
+              timestamp: DateTime.now(),
+            )
+          ]
+        : chatState.messages.isEmpty
+            ? [
+                AiMessage(
+                  id: 'welcome',
+                  text: l.aiWelcome,
+                  isUser: false,
+                  timestamp: DateTime.now(),
+                )
+              ]
+            : chatState.messages;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(l.aiTitle),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: l.aiNewConversation,
+            onPressed: () {
+              ref.read(aiChatProvider.notifier).clearChat();
+              _hasAddedWelcome = false;
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.history),
             tooltip: l.aiHistory,
@@ -101,17 +108,31 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       ),
       body: Column(
         children: [
+          // Error banner
+          if (chatState.error != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Theme.of(context).colorScheme.errorContainer,
+              child: Text(
+                chatState.error!,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                ),
+              ),
+            ),
+
           // Messages list
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              itemCount: _messages.length + (_isLoading ? 1 : 0),
+              itemCount: displayMessages.length + (chatState.isLoading ? 1 : 0),
               itemBuilder: (context, index) {
-                if (index == _messages.length) {
+                if (index == displayMessages.length) {
                   return _buildTypingIndicator();
                 }
-                return _buildMessage(_messages[index]);
+                return _buildMessage(displayMessages[index]);
               },
             ),
           ),
@@ -148,11 +169,12 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                       maxLines: null,
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _sendMessage(),
+                      enabled: !chatState.isLoading,
                     ),
                   ),
                   const SizedBox(width: 8),
                   IconButton.filledTonal(
-                    onPressed: _sendMessage,
+                    onPressed: chatState.isLoading ? null : _sendMessage,
                     icon: const Icon(Icons.send),
                     tooltip: l.aiSend,
                   ),
@@ -165,7 +187,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     );
   }
 
-  Widget _buildMessage(ChatMessage message) {
+  Widget _buildMessage(AiMessage message) {
     return Align(
       alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -235,16 +257,4 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       },
     );
   }
-}
-
-class ChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime timestamp;
-
-  ChatMessage({
-    required this.text,
-    required this.isUser,
-    required this.timestamp,
-  });
 }

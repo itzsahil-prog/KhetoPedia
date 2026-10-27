@@ -41,7 +41,7 @@ class SettingsScreen extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.language_outlined),
               title: Text(l.language),
-              subtitle: Text(locale.languageCode == 'hi' ? 'हिन्दी' : 'English'),
+              subtitle: Text(locale.languageCode == 'hi' ? l.languageHindi : l.languageEnglish),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showLanguageDialog(context, ref, l),
             ),
@@ -145,7 +145,7 @@ class SettingsScreen extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             RadioListTile<String>(
-              title: const Text('English'),
+              title: Text(l.languageEnglish),
               value: 'en',
               groupValue: ref.read(localeProvider).languageCode,
               onChanged: (_) {
@@ -154,7 +154,7 @@ class SettingsScreen extends ConsumerWidget {
               },
             ),
             RadioListTile<String>(
-              title: const Text('हिन्दी'),
+              title: Text(l.languageHindi),
               value: 'hi',
               groupValue: ref.read(localeProvider).languageCode,
               onChanged: (_) {

@@ -8,6 +8,7 @@ import '../../features/auth/auth_providers.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
+import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/presentation/verify_otp_screen.dart';
 import '../../features/fields/fields_screen.dart';
 import '../../features/home/home_screen.dart';
@@ -18,6 +19,9 @@ import '../../shared/layout/app_shell.dart';
 // ── Route name constants ──────────────────────────────────────────────────────
 
 abstract final class AppRoutes {
+  // ── Splash ────────────────────────────────────────────────────────────────
+  static const splash         = 'splash';
+
   // ── Auth (unauthenticated flow) ───────────────────────────────────────────
   static const login          = 'login';
   static const signup         = 'signup';
@@ -35,6 +39,7 @@ abstract final class AppRoutes {
 // ── Route path constants (for redirect comparisons) ──────────────────────────
 
 abstract final class AppPaths {
+  static const splash         = '/';
   static const login          = '/login';
   static const signup         = '/signup';
   static const forgotPassword = '/forgot-password';
@@ -62,7 +67,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey:        _rootNavigatorKey,
     debugLogDiagnostics: true,
-    initialLocation:     AppPaths.home,
+    initialLocation:     AppPaths.splash,
     refreshListenable:   authListenable,
 
     // ── Redirect guard ───────────────────────────────────────────────────────
@@ -70,6 +75,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final authState   = ref.read(authStateProvider);
       final currentPath = state.uri.path;
       final onAuthRoute = AppPaths.authPaths.contains(currentPath);
+      final onSplash    = currentPath == AppPaths.splash;
+
+      // Allow splash screen during initial load
+      if (onSplash) return null;
 
       return switch (authState) {
         // Still loading stored tokens — show inline splash, don't redirect.
@@ -93,6 +102,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
 
     routes: [
+      // ── Splash screen ────────────────────────────────────────────────────
+      GoRoute(
+        name:    AppRoutes.splash,
+        path:    AppPaths.splash,
+        builder: (ctx, state) => const SplashScreen(),
+      ),
+
       // ── Auth routes (outside the main shell) ────────────────────────────
       GoRoute(
         name:    AppRoutes.login,

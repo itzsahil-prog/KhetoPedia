@@ -34,7 +34,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     if (!status.isGranted) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Permission denied')),
+          SnackBar(content: Text(AppLocalizations.of(context).scanPermissionDenied)),
         );
       }
       return;
@@ -71,7 +71,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+          SnackBar(content: Text(AppLocalizations.of(context).scanError)),
         );
       }
     } finally {
@@ -137,7 +137,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Take or upload a photo of your crop leaf to detect diseases',
+                l.scanInstructions,
                 style: Theme.of(context).textTheme.bodyLarge,
                 textAlign: TextAlign.center,
               ),

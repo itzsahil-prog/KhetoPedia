@@ -119,9 +119,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 prefixIcon: const Icon(Icons.language_outlined),
                 border: const OutlineInputBorder(),
               ),
-              items: const [
-                DropdownMenuItem(value: 'en', child: Text('English')),
-                DropdownMenuItem(value: 'hi', child: Text('हिन्दी')),
+              items: [
+                DropdownMenuItem(value: 'en', child: Text(l.languageEnglish)),
+                DropdownMenuItem(value: 'hi', child: Text(l.languageHindi)),
               ],
               onChanged: (value) {
                 setState(() => _selectedLocale = value);

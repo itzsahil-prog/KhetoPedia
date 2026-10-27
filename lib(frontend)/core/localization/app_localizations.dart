@@ -49,6 +49,8 @@ class AppLocalizations {
   String get themeLight        => _strings.themeLight;
   String get themeDark         => _strings.themeDark;
   String get themeSystem       => _strings.themeSystem;
+  String get languageEnglish   => _strings.languageEnglish;
+  String get languageHindi     => _strings.languageHindi;
 
   // ── Auth string accessors ─────────────────────────────────────────────
   String get authLogin               => _strings.authLogin;
@@ -159,6 +161,9 @@ class AppLocalizations {
   String get scanConfidence              => _strings.scanConfidence;
   String get scanRecommendations         => _strings.scanRecommendations;
   String get scanSelectField             => _strings.scanSelectField;
+  String get scanInstructions            => _strings.scanInstructions;
+  String get scanPermissionDenied        => _strings.scanPermissionDenied;
+  String get scanError                   => _strings.scanError;
 
   // ── Soil Analysis strings ──────────────────────────────────────────────────
   String get soilTitle                   => _strings.soilTitle;
@@ -176,6 +181,7 @@ class AppLocalizations {
   String get soilStatusLow               => _strings.soilStatusLow;
   String get soilStatusAdequate          => _strings.soilStatusAdequate;
   String get soilStatusHigh              => _strings.soilStatusHigh;
+  String get soilTestSubmitted           => _strings.soilTestSubmitted;
 
   // ── Fields Management strings ──────────────────────────────────────────────
   String get fieldsTitle                 => _strings.fieldsTitle;
@@ -270,6 +276,8 @@ abstract class AppStrings {
   String get themeLight;
   String get themeDark;
   String get themeSystem;
+  String get languageEnglish;
+  String get languageHindi;
 
   // Auth
   String get authLogin;
@@ -380,6 +388,9 @@ abstract class AppStrings {
   String get scanConfidence;
   String get scanRecommendations;
   String get scanSelectField;
+  String get scanInstructions;
+  String get scanPermissionDenied;
+  String get scanError;
 
   // Soil Analysis
   String get soilTitle;
@@ -397,6 +408,7 @@ abstract class AppStrings {
   String get soilStatusLow;
   String get soilStatusAdequate;
   String get soilStatusHigh;
+  String get soilTestSubmitted;
 
   // Fields Management
   String get fieldsTitle;
