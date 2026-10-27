@@ -14,6 +14,8 @@ class AppTextField extends StatelessWidget {
     this.errorText,
     this.leading,
     this.trailing,
+    this.prefixIcon,
+    this.suffixIcon,
     this.obscureText  = false,
     this.readOnly     = false,
     this.enabled      = true,
@@ -21,6 +23,7 @@ class AppTextField extends StatelessWidget {
     this.keyboardType,
     this.textInputAction,
     this.inputFormatters,
+    this.validator,
     this.onChanged,
     this.onSubmitted,
     this.onTap,
@@ -36,6 +39,8 @@ class AppTextField extends StatelessWidget {
   final String?                      errorText;
   final Widget?                      leading;
   final Widget?                      trailing;
+  final IconData?                    prefixIcon;
+  final IconData?                    suffixIcon;
   final bool                         obscureText;
   final bool                         readOnly;
   final bool                         enabled;
@@ -43,6 +48,7 @@ class AppTextField extends StatelessWidget {
   final TextInputType?               keyboardType;
   final TextInputAction?             textInputAction;
   final List<TextInputFormatter>?    inputFormatters;
+  final String? Function(String?)?   validator;
   final ValueChanged<String>?        onChanged;
   final ValueChanged<String>?        onSubmitted;
   final VoidCallback?                onTap;
@@ -54,6 +60,63 @@ class AppTextField extends StatelessWidget {
     final theme   = Theme.of(context);
     final cs      = theme.colorScheme;
     final hasError = errorText != null && errorText!.isNotEmpty;
+
+    final Widget? leadingWidget = leading ?? (prefixIcon != null ? Icon(prefixIcon) : null);
+    final Widget? trailingWidget = trailing ?? (suffixIcon != null ? Icon(suffixIcon) : null);
+
+    // Use TextFormField if validator is provided, otherwise TextField
+    if (validator != null) {
+      return Semantics(
+        label:     semanticLabel ?? label,
+        textField: true,
+        child: TextFormField(
+          controller:         controller,
+          focusNode:          focusNode,
+          obscureText:        obscureText,
+          readOnly:           readOnly,
+          enabled:            enabled,
+          maxLines:           maxLines,
+          keyboardType:       keyboardType,
+          textInputAction:    textInputAction,
+          inputFormatters:    inputFormatters,
+          validator:          validator,
+          onChanged:          onChanged,
+          onFieldSubmitted:   onSubmitted,
+          onTap:              onTap,
+          autofillHints:      autofillHints,
+          style:              AppTextStyles.bodyMedium(cs.onSurface),
+          decoration: InputDecoration(
+            labelText:    label,
+            hintText:     hint,
+            helperText:   helperText,
+            errorText:    hasError ? errorText : null,
+            prefixIcon:   leadingWidget,
+            suffixIcon:   trailingWidget,
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide:   BorderSide(
+                color: hasError ? cs.error : cs.outline,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: hasError ? cs.error : cs.primary,
+                width: 2,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: cs.error),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: cs.error, width: 2),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Semantics(
       label:     semanticLabel ?? label,
@@ -78,9 +141,8 @@ class AppTextField extends StatelessWidget {
           hintText:     hint,
           helperText:   helperText,
           errorText:    hasError ? errorText : null,
-          prefixIcon:   leading,
-          suffixIcon:   trailing,
-          // Override border color when error
+          prefixIcon:   leadingWidget,
+          suffixIcon:   trailingWidget,
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide:   BorderSide(

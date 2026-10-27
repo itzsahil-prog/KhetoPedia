@@ -96,4 +96,103 @@ class StringsEn extends AppStrings {
   @override String get dashboardStatusHealthy       => 'Healthy';
   @override String get dashboardStatusAtRisk        => 'At Risk';
   @override String get dashboardStatusCritical      => 'Critical';
+
+  // ── Profile ───────────────────────────────────────────────────────────────
+  @override String get profile                  => 'Profile';
+  @override String get profileName              => 'Name';
+  @override String get profileEmail             => 'Email';
+  @override String get profilePhone             => 'Phone';
+  @override String get profileLocation          => 'Location';
+  @override String get profilePreferredLocale   => 'Preferred Language';
+  @override String get profileEdit              => 'Edit Profile';
+  @override String get profileSaved             => 'Profile updated successfully';
+  @override String get profileChangePassword    => 'Change Password';
+  @override String get profileCurrentPassword   => 'Current Password';
+  @override String get profileNewPassword       => 'New Password';
+  @override String get profilePasswordChanged   => 'Password changed successfully';
+
+  // ── Settings ──────────────────────────────────────────────────────────────
+  @override String get settingsNotifications       => 'Notifications';
+  @override String get settingsNotificationsCrop   => 'Crop Scan Alerts';
+  @override String get settingsNotificationsSoil   => 'Soil Test Alerts';
+  @override String get settingsNotificationsAlerts => 'Field Alerts';
+  @override String get settingsNotificationsAI     => 'AI Recommendations';
+  @override String get settingsAppearance          => 'Appearance';
+  @override String get settingsFontSize            => 'Font Size';
+  @override String get settingsFontSmall           => 'Small';
+  @override String get settingsFontMedium          => 'Medium';
+  @override String get settingsFontLarge           => 'Large';
+
+  // ── Crop Scanner ──────────────────────────────────────────────────────────
+  @override String get scanTitle                => 'Crop Scanner';
+  @override String get scanTakePhoto            => 'Take Photo';
+  @override String get scanUploadPhoto          => 'Upload from Gallery';
+  @override String get scanAnalyzing            => 'Analyzing image...';
+  @override String get scanHistory              => 'Scan History';
+  @override String get scanHistoryEmpty         => 'No scans yet. Upload a crop image to begin.';
+  @override String get scanCropDetected         => 'Crop Detected';
+  @override String get scanDiseaseDetected      => 'Disease Detected';
+  @override String get scanHealthy              => 'Healthy';
+  @override String get scanConfidence           => 'Confidence';
+  @override String get scanRecommendations      => 'Recommendations';
+  @override String get scanSelectField          => 'Select Field (Optional)';
+
+  // ── Soil Analysis ─────────────────────────────────────────────────────────
+  @override String get soilTitle             => 'Soil Analysis';
+  @override String get soilNewTest           => 'New Test';
+  @override String get soilHistory           => 'Test History';
+  @override String get soilHistoryEmpty      => 'No soil tests yet. Submit your first test result.';
+  @override String get soilPH                => 'pH Level';
+  @override String get soilMoisture          => 'Moisture';
+  @override String get soilNitrogen          => 'Nitrogen (N)';
+  @override String get soilPhosphorus        => 'Phosphorus (P)';
+  @override String get soilPotassium         => 'Potassium (K)';
+  @override String get soilEC                => 'EC (Salinity)';
+  @override String get soilSummary           => 'Soil Summary';
+  @override String get soilTrends            => 'Trends';
+  @override String get soilStatusLow         => 'Low';
+  @override String get soilStatusAdequate    => 'Adequate';
+  @override String get soilStatusHigh        => 'High';
+
+  // ── Fields Management ─────────────────────────────────────────────────────
+  @override String get fieldsTitle           => 'My Fields';
+  @override String get fieldsEmpty           => 'No fields yet. Add your first field.';
+  @override String get fieldsAdd             => 'Add Field';
+  @override String get fieldsName            => 'Field Name';
+  @override String get fieldsCrop            => 'Crop';
+  @override String get fieldsArea            => 'Area (hectares)';
+  @override String get fieldsHealthScore     => 'Health Score';
+  @override String get fieldsLastScanned     => 'Last Scanned';
+  @override String get fieldsDetail          => 'Field Details';
+  @override String get fieldsEdit            => 'Edit';
+  @override String get fieldsDelete          => 'Delete';
+  @override String get fieldsDeleteConfirm   => 'Are you sure you want to delete this field?';
+  @override String get fieldsSaved           => 'Field saved successfully';
+  @override String get fieldsDeleted         => 'Field deleted successfully';
+
+  // ── Recommendations ───────────────────────────────────────────────────────
+  @override String get recsTitle                => 'Recommendations';
+  @override String get recsEmpty                => 'No recommendations yet.';
+  @override String get recsIrrigation           => 'Irrigation';
+  @override String get recsFertilizer           => 'Fertilizer';
+  @override String get recsDiseaseManagement    => 'Disease Management';
+  @override String get recsGenerate             => 'Generate Recommendations';
+
+  // ── AI Assistant ──────────────────────────────────────────────────────────
+  @override String get aiTitle               => 'AI Assistant';
+  @override String get aiWelcome             => 'Hello! I\'m your agricultural assistant. How can I help you today?';
+  @override String get aiTypeMessage         => 'Type your question...';
+  @override String get aiSend                => 'Send';
+  @override String get aiThinking            => 'Thinking...';
+  @override String get aiNewConversation     => 'New Conversation';
+  @override String get aiHistory             => 'Conversation History';
+  @override String get aiHistoryEmpty        => 'No conversations yet.';
+
+  // ── Weather ───────────────────────────────────────────────────────────────
+  @override String get weatherTitle          => 'Weather';
+  @override String get weatherTemperature    => 'Temperature';
+  @override String get weatherHumidity       => 'Humidity';
+  @override String get weatherWind           => 'Wind';
+  @override String get weatherRain           => 'Rain';
+  @override String get weatherForecast       => 'Forecast';
 }

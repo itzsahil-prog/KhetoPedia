@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/theme.dart';
 
 /// Variant-driven button used across all features.
-enum AppButtonVariant { primary, secondary, outline, ghost, destructive }
+enum AppButtonVariant { primary, secondary, outline, outlined, text, ghost, destructive }
 enum AppButtonSize    { small, medium, large }
 
 class AppButton extends StatelessWidget {
@@ -16,6 +16,7 @@ class AppButton extends StatelessWidget {
     this.loading   = false,
     this.leading,
     this.trailing,
+    this.icon,
     this.semanticLabel,
   });
 
@@ -27,6 +28,7 @@ class AppButton extends StatelessWidget {
   final bool               loading;
   final Widget?            leading;
   final Widget?            trailing;
+  final IconData?          icon;
   final String?            semanticLabel;
 
   // ── Sizing ──────────────────────────────────────────────────────────────
@@ -62,6 +64,8 @@ class AppButton extends StatelessWidget {
       AppButtonVariant.secondary   => cs.secondary,
       AppButtonVariant.destructive => cs.error,
       AppButtonVariant.outline ||
+      AppButtonVariant.outlined ||
+      AppButtonVariant.text ||
       AppButtonVariant.ghost       => Colors.transparent,
     };
   }
@@ -73,12 +77,14 @@ class AppButton extends StatelessWidget {
       AppButtonVariant.secondary   => cs.onSecondary,
       AppButtonVariant.destructive => cs.onError,
       AppButtonVariant.outline ||
+      AppButtonVariant.outlined ||
+      AppButtonVariant.text ||
       AppButtonVariant.ghost       => cs.primary,
     };
   }
 
   BorderSide _border(BuildContext ctx) {
-    if (variant == AppButtonVariant.outline) {
+    if (variant == AppButtonVariant.outline || variant == AppButtonVariant.outlined) {
       return BorderSide(color: Theme.of(ctx).colorScheme.primary);
     }
     return BorderSide.none;
@@ -88,11 +94,13 @@ class AppButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDisabled = onPressed == null && !loading;
 
+    final Widget? leadingWidget = leading ?? (icon != null ? Icon(icon, size: 20) : null);
+
     Widget child = Row(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (leading != null) ...[leading!, const SizedBox(width: 8)],
+        if (leadingWidget != null) ...[leadingWidget, const SizedBox(width: 8)],
         Text(label),
         if (trailing != null) ...[const SizedBox(width: 8), trailing!],
       ],

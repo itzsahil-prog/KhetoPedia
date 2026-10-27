@@ -119,6 +119,105 @@ class AppLocalizations {
   String get dashboardStatusHealthy      => _strings.dashboardStatusHealthy;
   String get dashboardStatusAtRisk       => _strings.dashboardStatusAtRisk;
   String get dashboardStatusCritical     => _strings.dashboardStatusCritical;
+
+  // ── Profile strings ────────────────────────────────────────────────────────
+  String get profile                     => _strings.profile;
+  String get profileName                 => _strings.profileName;
+  String get profileEmail                => _strings.profileEmail;
+  String get profilePhone                => _strings.profilePhone;
+  String get profileLocation             => _strings.profileLocation;
+  String get profilePreferredLocale      => _strings.profilePreferredLocale;
+  String get profileEdit                 => _strings.profileEdit;
+  String get profileSaved                => _strings.profileSaved;
+  String get profileChangePassword       => _strings.profileChangePassword;
+  String get profileCurrentPassword      => _strings.profileCurrentPassword;
+  String get profileNewPassword          => _strings.profileNewPassword;
+  String get profilePasswordChanged      => _strings.profilePasswordChanged;
+
+  // ── Settings strings ───────────────────────────────────────────────────────
+  String get settingsNotifications       => _strings.settingsNotifications;
+  String get settingsNotificationsCrop   => _strings.settingsNotificationsCrop;
+  String get settingsNotificationsSoil   => _strings.settingsNotificationsSoil;
+  String get settingsNotificationsAlerts => _strings.settingsNotificationsAlerts;
+  String get settingsNotificationsAI     => _strings.settingsNotificationsAI;
+  String get settingsAppearance          => _strings.settingsAppearance;
+  String get settingsFontSize            => _strings.settingsFontSize;
+  String get settingsFontSmall           => _strings.settingsFontSmall;
+  String get settingsFontMedium          => _strings.settingsFontMedium;
+  String get settingsFontLarge           => _strings.settingsFontLarge;
+
+  // ── Crop Scanner strings ───────────────────────────────────────────────────
+  String get scanTitle                   => _strings.scanTitle;
+  String get scanTakePhoto               => _strings.scanTakePhoto;
+  String get scanUploadPhoto             => _strings.scanUploadPhoto;
+  String get scanAnalyzing               => _strings.scanAnalyzing;
+  String get scanHistory                 => _strings.scanHistory;
+  String get scanHistoryEmpty            => _strings.scanHistoryEmpty;
+  String get scanCropDetected            => _strings.scanCropDetected;
+  String get scanDiseaseDetected         => _strings.scanDiseaseDetected;
+  String get scanHealthy                 => _strings.scanHealthy;
+  String get scanConfidence              => _strings.scanConfidence;
+  String get scanRecommendations         => _strings.scanRecommendations;
+  String get scanSelectField             => _strings.scanSelectField;
+
+  // ── Soil Analysis strings ──────────────────────────────────────────────────
+  String get soilTitle                   => _strings.soilTitle;
+  String get soilNewTest                 => _strings.soilNewTest;
+  String get soilHistory                 => _strings.soilHistory;
+  String get soilHistoryEmpty            => _strings.soilHistoryEmpty;
+  String get soilPH                      => _strings.soilPH;
+  String get soilMoisture                => _strings.soilMoisture;
+  String get soilNitrogen                => _strings.soilNitrogen;
+  String get soilPhosphorus              => _strings.soilPhosphorus;
+  String get soilPotassium               => _strings.soilPotassium;
+  String get soilEC                      => _strings.soilEC;
+  String get soilSummary                 => _strings.soilSummary;
+  String get soilTrends                  => _strings.soilTrends;
+  String get soilStatusLow               => _strings.soilStatusLow;
+  String get soilStatusAdequate          => _strings.soilStatusAdequate;
+  String get soilStatusHigh              => _strings.soilStatusHigh;
+
+  // ── Fields Management strings ──────────────────────────────────────────────
+  String get fieldsTitle                 => _strings.fieldsTitle;
+  String get fieldsEmpty                 => _strings.fieldsEmpty;
+  String get fieldsAdd                   => _strings.fieldsAdd;
+  String get fieldsName                  => _strings.fieldsName;
+  String get fieldsCrop                  => _strings.fieldsCrop;
+  String get fieldsArea                  => _strings.fieldsArea;
+  String get fieldsHealthScore           => _strings.fieldsHealthScore;
+  String get fieldsLastScanned           => _strings.fieldsLastScanned;
+  String get fieldsDetail                => _strings.fieldsDetail;
+  String get fieldsEdit                  => _strings.fieldsEdit;
+  String get fieldsDelete                => _strings.fieldsDelete;
+  String get fieldsDeleteConfirm         => _strings.fieldsDeleteConfirm;
+  String get fieldsSaved                 => _strings.fieldsSaved;
+  String get fieldsDeleted               => _strings.fieldsDeleted;
+
+  // ── Recommendations strings ────────────────────────────────────────────────
+  String get recsTitle                   => _strings.recsTitle;
+  String get recsEmpty                   => _strings.recsEmpty;
+  String get recsIrrigation              => _strings.recsIrrigation;
+  String get recsFertilizer              => _strings.recsFertilizer;
+  String get recsDiseaseManagement       => _strings.recsDiseaseManagement;
+  String get recsGenerate                => _strings.recsGenerate;
+
+  // ── AI Assistant strings ───────────────────────────────────────────────────
+  String get aiTitle                     => _strings.aiTitle;
+  String get aiWelcome                   => _strings.aiWelcome;
+  String get aiTypeMessage               => _strings.aiTypeMessage;
+  String get aiSend                      => _strings.aiSend;
+  String get aiThinking                  => _strings.aiThinking;
+  String get aiNewConversation           => _strings.aiNewConversation;
+  String get aiHistory                   => _strings.aiHistory;
+  String get aiHistoryEmpty              => _strings.aiHistoryEmpty;
+
+  // ── Weather strings ────────────────────────────────────────────────────────
+  String get weatherTitle                => _strings.weatherTitle;
+  String get weatherTemperature          => _strings.weatherTemperature;
+  String get weatherHumidity             => _strings.weatherHumidity;
+  String get weatherWind                 => _strings.weatherWind;
+  String get weatherRain                 => _strings.weatherRain;
+  String get weatherForecast             => _strings.weatherForecast;
 }
 
 // ── Delegate ───────────────────────────────────────────────────────────────
@@ -241,4 +340,103 @@ abstract class AppStrings {
   String get dashboardStatusHealthy;
   String get dashboardStatusAtRisk;
   String get dashboardStatusCritical;
+
+  // Profile
+  String get profile;
+  String get profileName;
+  String get profileEmail;
+  String get profilePhone;
+  String get profileLocation;
+  String get profilePreferredLocale;
+  String get profileEdit;
+  String get profileSaved;
+  String get profileChangePassword;
+  String get profileCurrentPassword;
+  String get profileNewPassword;
+  String get profilePasswordChanged;
+
+  // Settings
+  String get settingsNotifications;
+  String get settingsNotificationsCrop;
+  String get settingsNotificationsSoil;
+  String get settingsNotificationsAlerts;
+  String get settingsNotificationsAI;
+  String get settingsAppearance;
+  String get settingsFontSize;
+  String get settingsFontSmall;
+  String get settingsFontMedium;
+  String get settingsFontLarge;
+
+  // Crop Scanner
+  String get scanTitle;
+  String get scanTakePhoto;
+  String get scanUploadPhoto;
+  String get scanAnalyzing;
+  String get scanHistory;
+  String get scanHistoryEmpty;
+  String get scanCropDetected;
+  String get scanDiseaseDetected;
+  String get scanHealthy;
+  String get scanConfidence;
+  String get scanRecommendations;
+  String get scanSelectField;
+
+  // Soil Analysis
+  String get soilTitle;
+  String get soilNewTest;
+  String get soilHistory;
+  String get soilHistoryEmpty;
+  String get soilPH;
+  String get soilMoisture;
+  String get soilNitrogen;
+  String get soilPhosphorus;
+  String get soilPotassium;
+  String get soilEC;
+  String get soilSummary;
+  String get soilTrends;
+  String get soilStatusLow;
+  String get soilStatusAdequate;
+  String get soilStatusHigh;
+
+  // Fields Management
+  String get fieldsTitle;
+  String get fieldsEmpty;
+  String get fieldsAdd;
+  String get fieldsName;
+  String get fieldsCrop;
+  String get fieldsArea;
+  String get fieldsHealthScore;
+  String get fieldsLastScanned;
+  String get fieldsDetail;
+  String get fieldsEdit;
+  String get fieldsDelete;
+  String get fieldsDeleteConfirm;
+  String get fieldsSaved;
+  String get fieldsDeleted;
+
+  // Recommendations
+  String get recsTitle;
+  String get recsEmpty;
+  String get recsIrrigation;
+  String get recsFertilizer;
+  String get recsDiseaseManagement;
+  String get recsGenerate;
+
+  // AI Assistant
+  String get aiTitle;
+  String get aiWelcome;
+  String get aiTypeMessage;
+  String get aiSend;
+  String get aiThinking;
+  String get aiNewConversation;
+  String get aiHistory;
+  String get aiHistoryEmpty;
+
+  // Weather
+  String get weatherTitle;
+  String get weatherTemperature;
+  String get weatherHumidity;
+  String get weatherWind;
+  String get weatherRain;
+  String get weatherForecast;
 }
