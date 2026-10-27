@@ -1,0 +1,107 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "BLOCKER-1",
+      "title": "JWT Token Blocklist Not Enforced in Authentication Flow",
+      "severity": "critical",
+      "files": [
+        "backend/app/api/deps.py",
+        "backend/app/core/security.py",
+        "backend/app/api/v1/endpoints/auth.py"
+      ],
+      "description": "Token blocklist service exists but is never called. Tokens lack 'jti' claims and get_current_user() doesn't check blocklist.",
+      "evidence": "security.py lines 28-50: create_access_token() missing jti claim; deps.py lines 13-56: get_current_user() missing blocklist check; auth.py line 66: logout() doesn't blocklist token",
+      "consequence": "Logged-out users can continue using tokens until expiry. Compromised tokens cannot be revoked.",
+      "correction": "1. Add jti claim (uuid) to create_access_token() and create_refresh_token(). 2. In get_current_user(), extract jti from payload and call token_blocklist_service.is_token_blocklisted(jti), raise 401 if blocklisted. 3. Update logout() to extract jti/exp from token and call blocklist_token()."
+    },
+    {
+      "id": "BLOCKER-2",
+      "title": "Crop Scanner Not Using Storage Service for Image Upload",
+      "severity": "critical",
+      "files": [
+        "backend/app/services/crop_scanner_service.py"
+      ],
+      "description": "Crop scanner generates fake storage paths without actually uploading images via storage_service or image_service.",
+      "evidence": "Line 150: save_path = f\"/uploads/crops/{random_name}\" with no actual file write or storage_service.upload() call",
+      "consequence": "Images not validated (MIME, size), not stored in S3 when USE_S3=true, fake paths in database break retrieval, security risk from unvalidated uploads",
+      "correction": "After validation, call image_service.validate_image(file_bytes, filename). Replace line 150 with: save_path = await image_service.upload_image(file_bytes, filename, 'crops', user.id)"
+    },
+    {
+      "id": "BLOCKER-3",
+      "title": "Soil Test Image Upload Feature Not Implemented",
+      "severity": "critical",
+      "files": [
+        "backend/app/api/v1/endpoints/soil.py",
+        "backend/app/services/soil_service.py"
+      ],
+      "description": "Model has report_image_path column and migration exists, but endpoint doesn't accept UploadFile parameter as required by plan Step 8.",
+      "evidence": "models/soil.py line 49: report_image_path column exists; endpoints/soil.py line 17: submit_soil_test() only accepts JSON, no File(...) parameter",
+      "consequence": "Users cannot upload lab report images despite UI expecting this feature",
+      "correction": "1. Add 'file: Optional[UploadFile] = File(None)' parameter to submit_soil_test(). 2. In soil_service.create_soil_test(), if file provided, call image_service.upload_image(file_bytes, filename, 'soil', user.id) and store in report_image_path. 3. Add report_image_url to SoilTestResponse schema"
+    },
+    {
+      "id": "BLOCKER-4",
+      "title": "Rate Limiting Middleware Not Registered in Application",
+      "severity": "critical",
+      "files": [
+        "backend/app/main.py",
+        "backend/app/middleware/rate_limit.py"
+      ],
+      "description": "Rate limiting middleware exists but is never added to FastAPI app. Plan Step 11 requires rate limits on login, forgot-password, and crop-scans.",
+      "evidence": "middleware/rate_limit.py defines limiter but main.py has no app.add_middleware(SlowAPIMiddleware) or app.state.limiter assignment",
+      "consequence": "No protection against brute force login attacks, no rate limiting on expensive crop scan operations, API vulnerable to abuse and DoS",
+      "correction": "1. Import limiter in main.py. 2. Add app.state.limiter = limiter and exception handler. 3. Add @limiter.limit('10/hour') to /v1/auth/login and /v1/auth/forgot-password. 4. Add @limiter.limit('20/hour') to POST /v1/crop-scans"
+    },
+    {
+      "id": "BLOCKER-5",
+      "title": "Dashboard Caching Not Implemented",
+      "severity": "critical",
+      "files": [
+        "backend/app/api/v1/endpoints/dashboard.py"
+      ],
+      "description": "Plan Step 14 requires dashboard summary cached with 5-minute TTL. Current implementation queries database on every request without Redis caching.",
+      "evidence": "endpoints/dashboard.py get_dashboard_summary() lines 24-124: no cache check or cache store calls, no cache invalidation",
+      "consequence": "Database hit on every dashboard load (high read load), slower response times for most-accessed endpoint, Redis caching not utilized",
+      "correction": "1. Before database queries, check cache_service.get_json(f'dashboard:summary:{user.id}'). 2. After building response, call cache_service.set_json(cache_key, response.model_dump(), 300). 3. Add cache invalidation (cache_service.delete) in field and alert creation/update endpoints"
+    },
+    {
+      "id": "BLOCKER-6",
+      "title": "Weather Data Not Integrated in Dashboard Response",
+      "severity": "critical",
+      "files": [
+        "backend/app/api/v1/endpoints/dashboard.py",
+        "backend/app/schemas/dashboard.py"
+      ],
+      "description": "Plan Step 17 requires dashboard summary to include weather data. Schema and endpoint missing weather field.",
+      "evidence": "schemas/dashboard.py line 45: DashboardSummaryResponse has no weather field; endpoints/dashboard.py line 120-124: response includes stats, fields, alerts but no weather",
+      "consequence": "Dashboard displays incomplete data; users cannot see weather advisory from backend",
+      "correction": "1. Add WeatherCardSchema to schemas/dashboard.py with temperature, humidity, rain_probability, condition, advisory, last_updated. 2. Add weather: Optional[WeatherCardSchema] to DashboardSummaryResponse. 3. In get_dashboard_summary(), fetch weather for primary field's coordinates and include in response"
+    },
+    {
+      "id": "BLOCKER-7",
+      "title": "Environment Template Has Ambiguous Credential Placeholders",
+      "severity": "medium",
+      "files": [
+        "backend/.env.example"
+      ],
+      "description": "Placeholder credential values could be mistaken for real values or committed accidentally.",
+      "evidence": "Lines 16-17: S3_ACCESS_KEY_ID=your_access_key, S3_SECRET_ACCESS_KEY=your_secret_key; Line 24: WEATHER_API_KEY=your_openweathermap_api_key",
+      "consequence": "Risk of deploying with placeholder credentials or committing real credentials if .env.example copied without modification",
+      "correction": "Update placeholder values to be explicit: 'REPLACE_WITH_YOUR_AWS_ACCESS_KEY_ID', 'REPLACE_WITH_YOUR_AWS_SECRET_ACCESS_KEY', 'REPLACE_WITH_OPENWEATHERMAP_API_KEY'. Add comments with service URLs"
+    },
+    {
+      "id": "BLOCKER-8",
+      "title": "Integration Tests for Infrastructure Features Missing",
+      "severity": "critical",
+      "files": [
+        "backend/tests/"
+      ],
+      "description": "Plan Step 18 requires integration tests for storage, Redis, weather, and migrations. Required test files do not exist.",
+      "evidence": "Missing files: tests/test_storage.py, tests/test_redis.py, tests/test_weather.py, tests/test_migrations.py. Only test_auth_and_dashboard.py and test_all_features.py exist",
+      "consequence": "No verification that S3/Redis/weather work, cannot confirm 80% coverage requirement, no verification migrations are reversible",
+      "correction": "Create test files with minimum cases: test_storage.py (valid upload, invalid MIME, S3 vs filesystem); test_redis.py (cache, blocklist, invalidation); test_weather.py (mock mode, caching, API failure); test_migrations.py (upgrade, downgrade)"
+    }
+  ],
+  "reviewDoc": "f:\\khetopedia\\.agents\\tasks\\khetopedia-main-2026-10-27\\backend-infra-review.md"
+}
