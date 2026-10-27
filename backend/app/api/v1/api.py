@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     ai,
     sensors,
     weather,
+    alerts,
 )
 
 api_router = APIRouter()
@@ -25,3 +26,4 @@ api_router.include_router(recommendations.router)
 api_router.include_router(ai.router)
 api_router.include_router(sensors.router)
 api_router.include_router(weather.router)
+api_router.include_router(alerts.router)

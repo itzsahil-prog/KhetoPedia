@@ -6,7 +6,7 @@ from fastapi import HTTPException, UploadFile, status
 from app.models.soil import SoilTest
 from app.models.dashboard import Alert, Field
 from app.models.user import User
-from app.schemas.soil import SoilSummaryResponse, SoilTestCreate
+from app.schemas.soil import SoilSummaryResponse, SoilTestCreate, SoilTestResponse, SoilTrendResponse
 from app.services.image_service import image_service
 from app.services.cache_service import cache_service
 
@@ -222,6 +222,175 @@ class SoilService:
             toxicity_level=toxicity,
             npk_status=npk_dict,
             summary_advisory=advisory,
+        )
+    
+    @staticmethod
+    async def get_soil_trends(
+        db: AsyncSession, user: User, field_id: str
+    ) -> SoilTrendResponse:
+        """
+        Analyze soil trends over time based on historical soil tests.
+        
+        Args:
+            db: Database session
+            user: Current user
+            field_id: Field ID to analyze
+            
+        Returns:
+            SoilTrendResponse with trend analysis
+            
+        Raises:
+            HTTPException: If field not found
+        """
+        # Verify field ownership
+        field_stmt = select(Field).where(Field.id == field_id, Field.user_id == user.id)
+        field = (await db.execute(field_stmt)).scalars().first()
+        if not field:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Field not found.")
+        
+        # Get last 5 soil tests ordered by date
+        stmt = (
+            select(SoilTest)
+            .where(SoilTest.field_id == field_id, SoilTest.user_id == user.id)
+            .order_by(desc(SoilTest.test_date))
+            .limit(5)
+        )
+        result = await db.execute(stmt)
+        tests = list(result.scalars().all())
+        
+        if len(tests) < 2:
+            # Insufficient data for trend analysis
+            return SoilTrendResponse(
+                field_id=field.id,
+                field_name=field.name,
+                tests_analyzed=len(tests),
+                ph_trend="Insufficient Data",
+                moisture_trend="Insufficient Data",
+                npk_trend="Insufficient Data",
+                toxicity_progression="N/A",
+                historical_tests=[SoilTestResponse.model_validate(t) for t in tests],
+                advisory="At least 2 soil tests are required for trend analysis. Continue regular soil testing.",
+            )
+        
+        # Reverse to get chronological order (oldest first)
+        tests_chrono = list(reversed(tests))
+        oldest = tests_chrono[0]
+        latest = tests_chrono[-1]
+        
+        # pH Trend Analysis
+        ph_trend = "Stable"
+        if abs(latest.ph - oldest.ph) > 0.5:
+            if latest.ph > oldest.ph:
+                # pH increasing
+                if oldest.ph < 5.5:
+                    ph_trend = "Improving"  # Was acidic, getting better
+                elif latest.ph > 8.2:
+                    ph_trend = "Degrading"  # Becoming too alkaline
+                else:
+                    ph_trend = "Stable"
+            else:
+                # pH decreasing
+                if oldest.ph > 8.2:
+                    ph_trend = "Improving"  # Was alkaline, getting better
+                elif latest.ph < 5.5:
+                    ph_trend = "Degrading"  # Becoming too acidic
+                else:
+                    ph_trend = "Stable"
+        
+        # Moisture Trend Analysis
+        moisture_trend = "Stable"
+        if oldest.moisture_percentage and latest.moisture_percentage:
+            moisture_delta = latest.moisture_percentage - oldest.moisture_percentage
+            if abs(moisture_delta) > 10:
+                if moisture_delta > 0:
+                    moisture_trend = "Increasing" if latest.moisture_percentage < 70 else "Degrading (Waterlogging Risk)"
+                else:
+                    moisture_trend = "Decreasing" if latest.moisture_percentage > 25 else "Degrading (Drought Stress)"
+        else:
+            moisture_trend = "Insufficient Data"
+        
+        # NPK Trend Analysis
+        npk_trend = "Stable"
+        npk_changes = []
+        
+        if oldest.nitrogen_kg_ha is not None and latest.nitrogen_kg_ha is not None:
+            n_delta = latest.nitrogen_kg_ha - oldest.nitrogen_kg_ha
+            if abs(n_delta) > 50:
+                if n_delta < 0:
+                    npk_changes.append("Nitrogen depleting")
+                    npk_trend = "Degrading"
+                else:
+                    npk_changes.append("Nitrogen increasing")
+                    if npk_trend != "Degrading":
+                        npk_trend = "Improving"
+        
+        if oldest.phosphorus_kg_ha is not None and latest.phosphorus_kg_ha is not None:
+            p_delta = latest.phosphorus_kg_ha - oldest.phosphorus_kg_ha
+            if abs(p_delta) > 5:
+                if p_delta < 0:
+                    npk_changes.append("Phosphorus depleting")
+                    npk_trend = "Degrading"
+                else:
+                    npk_changes.append("Phosphorus increasing")
+        
+        if oldest.potassium_kg_ha is not None and latest.potassium_kg_ha is not None:
+            k_delta = latest.potassium_kg_ha - oldest.potassium_kg_ha
+            if abs(k_delta) > 30:
+                if k_delta < 0:
+                    npk_changes.append("Potassium depleting")
+                    npk_trend = "Degrading"
+                else:
+                    npk_changes.append("Potassium increasing")
+        
+        if not npk_changes:
+            npk_trend = "Stable"
+        
+        # Toxicity Progression Analysis
+        toxicity_levels = {"Green": 0, "Yellow": 1, "Orange": 2, "Red": 3}
+        oldest_tox = toxicity_levels.get(oldest.toxicity_level, 0)
+        latest_tox = toxicity_levels.get(latest.toxicity_level, 0)
+        
+        toxicity_progression = "N/A"
+        if oldest_tox == 0 and latest_tox == 0:
+            toxicity_progression = "Stable (No Toxicity)"
+        elif latest_tox < oldest_tox:
+            toxicity_progression = "Improving"
+        elif latest_tox > oldest_tox:
+            toxicity_progression = "Worsening"
+        else:
+            toxicity_progression = "Stable"
+        
+        # Generate Advisory
+        advisory_parts = []
+        advisory_parts.append(f"Analysis based on {len(tests)} soil tests from {oldest.test_date.strftime('%Y-%m-%d')} to {latest.test_date.strftime('%Y-%m-%d')}.")
+        
+        if ph_trend == "Improving":
+            advisory_parts.append(f"pH is improving (from {oldest.ph:.1f} to {latest.ph:.1f}).")
+        elif ph_trend == "Degrading":
+            advisory_parts.append(f"pH is degrading (from {oldest.ph:.1f} to {latest.ph:.1f}). Consider soil amendments.")
+        
+        if npk_trend == "Degrading":
+            advisory_parts.append(f"Nutrient depletion detected: {', '.join(npk_changes)}. Apply targeted fertilizers.")
+        elif npk_trend == "Improving":
+            advisory_parts.append("Nutrient levels are improving. Continue current fertilization program.")
+        
+        if toxicity_progression == "Worsening":
+            advisory_parts.append(f"Toxicity levels worsening ({oldest.toxicity_level} → {latest.toxicity_level}). Investigate pollution sources.")
+        elif toxicity_progression == "Improving":
+            advisory_parts.append(f"Toxicity levels improving ({oldest.toxicity_level} → {latest.toxicity_level}). Remediation efforts are working.")
+        
+        advisory = " ".join(advisory_parts)
+        
+        return SoilTrendResponse(
+            field_id=field.id,
+            field_name=field.name,
+            tests_analyzed=len(tests),
+            ph_trend=ph_trend,
+            moisture_trend=moisture_trend,
+            npk_trend=npk_trend,
+            toxicity_progression=toxicity_progression,
+            historical_tests=[SoilTestResponse.model_validate(t) for t in tests],
+            advisory=advisory,
         )
 
 

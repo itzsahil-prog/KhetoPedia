@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -71,3 +71,16 @@ class SoilSummaryResponse(BaseModel):
     toxicity_level: str
     npk_status: dict[str, str]  # e.g. {"nitrogen": "Low", "phosphorus": "Adequate", "potassium": "High"}
     summary_advisory: str
+
+
+class SoilTrendResponse(BaseModel):
+    """Response model for soil trend analysis."""
+    field_id: str
+    field_name: str
+    tests_analyzed: int
+    ph_trend: str  # "Improving", "Stable", "Degrading", "Insufficient Data"
+    moisture_trend: str
+    npk_trend: str
+    toxicity_progression: str  # "Improving", "Stable", "Worsening", "N/A"
+    historical_tests: List[SoilTestResponse]
+    advisory: str

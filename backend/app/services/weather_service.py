@@ -1,6 +1,6 @@
 import httpx
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Dict, Any
 from app.schemas.weather import WeatherForecastItem, WeatherResponse
 from app.core.config import settings
 from app.services.cache_service import cache_service
@@ -175,6 +175,42 @@ class WeatherService:
             last_updated=now,
             hourly_forecast=hourly,
         )
+    
+    @staticmethod
+    async def get_forecast_summary(
+        latitude: float,
+        longitude: float,
+    ) -> Dict[str, Any]:
+        """
+        Get simplified weather forecast summary for recommendation engine.
+        
+        Args:
+            latitude: Location latitude
+            longitude: Location longitude
+            
+        Returns:
+            Dictionary with rain_probability_24h, max_temp_24h, avg_wind_speed
+        """
+        weather_data = await WeatherService.get_weather(latitude, longitude)
+        
+        # Calculate 24h summary from hourly forecast
+        rain_prob_24h = weather_data.rain_probability_percentage
+        max_temp_24h = weather_data.temperature_celsius
+        avg_wind = weather_data.wind_speed_kmh
+        
+        if weather_data.hourly_forecast:
+            temps = [item.temperature_c for item in weather_data.hourly_forecast]
+            max_temp_24h = max(temps) if temps else max_temp_24h
+            
+            rain_probs = [item.rain_probability_pct for item in weather_data.hourly_forecast]
+            rain_prob_24h = max(rain_probs) if rain_probs else rain_prob_24h
+        
+        return {
+            "rain_probability_24h": rain_prob_24h,
+            "max_temp_24h": max_temp_24h,
+            "avg_wind_speed": avg_wind,
+            "condition": weather_data.condition,
+        }
 
 
 weather_service = WeatherService()

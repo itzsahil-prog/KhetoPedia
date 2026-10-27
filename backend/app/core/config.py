@@ -44,6 +44,16 @@ class Settings(BaseSettings):
     WEATHER_CACHE_TTL: int = 1800  # 30 minutes
     USE_MOCK_WEATHER: bool = True  # False to use real API
 
+    # LLM Configuration
+    LLM_PROVIDER: str = "openai"  # "openai", "anthropic", "local", "none"
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    ANTHROPIC_API_KEY: str = ""
+    ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
+    LLM_MAX_TOKENS: int = 1500
+    LLM_TEMPERATURE: float = 0.7
+    USE_LLM: bool = False  # Feature flag for graceful fallback
+
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost",

@@ -1,11 +1,11 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
 from app.models.user import User
-from app.schemas.soil import SoilSummaryResponse, SoilTestCreate, SoilTestResponse
+from app.schemas.soil import SoilSummaryResponse, SoilTestCreate, SoilTestResponse, SoilTrendResponse
 from app.services.soil_service import soil_service
 
 router = APIRouter(prefix="/soil", tags=["Soil Analysis"])
@@ -16,10 +16,9 @@ async def submit_soil_test(
     data: SoilTestCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    report_image: Optional[UploadFile] = File(None),
 ):
     """
-    Submit manual laboratory soil test results with optional lab report image.
+    Submit manual laboratory soil test results.
 
     Evaluates:
     - pH against optimal agronomic range (5.5 – 8.2)
@@ -29,8 +28,10 @@ async def submit_soil_test(
     - Macronutrients (N, P, K) with Low/Adequate/High classification
 
     Updates the linked field's soil_status and generates critical alerts for toxicity.
+    
+    For submitting with lab report image, use POST /v1/soil/tests/with-image endpoint.
     """
-    test = await soil_service.create_soil_test(db, current_user, data, report_image)
+    test = await soil_service.create_soil_test(db, current_user, data, None)
     return SoilTestResponse.model_validate(test)
 
 
@@ -69,3 +70,24 @@ async def get_field_soil_summary(
     Includes pH, moisture, NPK status (Low/Adequate/High), and advisory text.
     """
     return await soil_service.get_soil_summary(db, current_user, field_id)
+
+
+@router.get("/trends/{field_id}", response_model=SoilTrendResponse)
+async def get_field_soil_trends(
+    field_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Analyze soil health trends over time based on historical soil tests.
+    
+    Returns:
+    - Trend indicators for pH, moisture, NPK levels
+    - Toxicity progression (Improving/Stable/Worsening)
+    - Historical test results (up to 5 most recent)
+    - Advisory text with actionable recommendations
+    
+    Requires at least 2 soil tests for trend analysis.
+    Results are cached for 1 hour.
+    """
+    return await soil_service.get_soil_trends(db, current_user, field_id)
