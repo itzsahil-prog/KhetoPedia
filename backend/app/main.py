@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,8 +8,19 @@ from slowapi.errors import RateLimitExceeded
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.database import init_db
+from app.core.logging_config import configure_logging
 from app.core.redis import init_redis, close_redis
 from app.middleware.rate_limit import limiter
+
+# Configure structured logging as early as possible.
+# Set JSON_LOGS=true in the environment for production JSON output.
+import os as _os
+configure_logging(
+    json_logs=_os.environ.get("JSON_LOGS", "").lower() in ("1", "true", "yes"),
+    level=_os.environ.get("LOG_LEVEL", "INFO"),
+)
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -58,7 +70,13 @@ app.add_middleware(
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     # Log exception for debugging
-    print(f"[UNHANDLED EXCEPTION] {request.method} {request.url.path}: {exc}")
+    logger.error(
+        "Unhandled exception on %s %s: %s",
+        request.method,
+        request.url.path,
+        exc,
+        exc_info=True,
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={

@@ -1,3 +1,6 @@
+"""
+Pytest configuration and fixtures for Khetopedia backend tests.
+"""
 import pytest
 from app.core.database import init_db
 

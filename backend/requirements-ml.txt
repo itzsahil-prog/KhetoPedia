@@ -1,0 +1,25 @@
+# ML Training Dependencies for Khetopedia
+# Install with: pip install -r requirements-ml.txt
+
+# Core ML Framework
+torch>=2.2.0
+torchvision>=0.17.0
+pillow>=10.2.0
+numpy>=1.26.0
+
+# Training Utilities
+tqdm>=4.66.0
+tensorboard>=2.15.0
+
+# Evaluation and Metrics
+matplotlib>=3.8.0
+seaborn>=0.13.0
+scikit-learn>=1.4.0
+pandas>=2.2.0
+
+# Image Augmentation (optional but recommended)
+albumentations>=1.3.0
+
+# For CUDA support on Windows, use:
+# --extra-index-url https://download.pytorch.org/whl/cu121
+# Or install via: pip3 install torch torchvision --index-url https://download.pytorch.org/whl/cu121

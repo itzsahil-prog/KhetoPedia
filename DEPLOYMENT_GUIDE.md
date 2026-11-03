@@ -1,1796 +1,966 @@
 # Khetopedia Deployment Guide
 
-**Version:** 1.0.0  
-**Last Updated:** October 27, 2026  
-**Status:** Production Ready
-
----
-
 ## Table of Contents
-
-1. [Prerequisites](#1-prerequisites)
-2. [Backend Deployment](#2-backend-deployment)
-3. [Database Setup](#3-database-setup)
-4. [Redis Configuration](#4-redis-configuration)
-5. [Object Storage Setup](#5-object-storage-setup)
-6. [Frontend Deployment](#6-frontend-deployment)
-7. [Environment Configuration](#7-environment-configuration)
-8. [Database Migrations](#8-database-migrations)
-9. [Initial Setup & Seeding](#9-initial-setup--seeding)
-10. [Monitoring & Maintenance](#10-monitoring--maintenance)
-11. [Troubleshooting](#11-troubleshooting)
-12. [Security Checklist](#12-security-checklist)
+1. [Prerequisites](#prerequisites)
+2. [Environment Setup](#environment-setup)
+3. [Database Setup (PostgreSQL)](#database-setup-postgresql)
+4. [Redis Setup](#redis-setup)
+5. [S3 Storage Setup](#s3-storage-setup)
+6. [Backend Deployment](#backend-deployment)
+7. [Frontend Deployment](#frontend-deployment)
+8. [ML Model Setup](#ml-model-setup)
+9. [Monitoring & Logging](#monitoring--logging)
+10. [Production Checklist](#production-checklist)
 
 ---
 
-## 1. Prerequisites
+## Prerequisites
 
-### 1.1 System Requirements
-
-**Development Environment:**
-- Python 3.11 or higher
-- Flutter SDK 3.13.0 or higher
-- Dart SDK (included with Flutter)
-- Node.js 18+ (optional, for tooling)
+### Required Software
+- Python 3.11+
+- PostgreSQL 15+
+- Redis 7+
+- Flutter 3.10+
+- Docker & Docker Compose (recommended)
 - Git
 
-**Production Environment:**
-- Ubuntu 22.04 LTS or similar Linux distribution
-- 4GB RAM minimum (8GB recommended with ML model)
-- 2 CPU cores minimum (4 cores recommended)
-- 50GB storage minimum
-- HTTPS/TLS certificate (Let's Encrypt recommended)
-
-### 1.2 Required Services
-
-**Essential:**
-- PostgreSQL 14+ (production database)
-- Redis 7+ (caching and rate limiting)
-- S3-compatible object storage (AWS S3, MinIO, DigitalOcean Spaces)
-
-**Optional but Recommended:**
-- NGINX or Traefik (load balancer and reverse proxy)
-- Sentry (error monitoring)
-- Prometheus + Grafana (metrics and monitoring)
-- Docker & Docker Compose (containerization)
-
-### 1.3 External API Keys
-
-**Required:**
-- OpenWeatherMap API key (free tier available)
-- SMTP credentials (for password reset emails)
-
-**Optional:**
-- OpenAI API key (for AI assistant)
-- Anthropic API key (alternative for AI assistant)
-- AWS credentials (for S3 storage)
+### Required API Keys
+- OpenWeatherMap API key
+- OpenAI API key (or Anthropic)
+- AWS S3 credentials (or compatible service)
+- Firebase credentials (for Flutter)
 
 ---
 
-## 2. Backend Deployment
+## Environment Setup
 
-### 2.1 Local Development Setup
-
-**Step 1: Clone Repository**
+### 1. Clone and Navigate to Project
 ```bash
-git clone <repository-url>
-cd khetopedia
+cd f:\khetopedia
 ```
 
-**Step 2: Create Virtual Environment**
+### 2. Backend Environment Variables
+Create `backend/.env`:
+
 ```bash
-cd backend
-python -m venv venv
+# Database
+DATABASE_URL=postgresql://khetopedia_user:secure_password@localhost:5432/khetopedia_db
 
-# Windows
-venv\Scripts\activate
-
-# Linux/Mac
-source venv/bin/activate
-```
-
-**Step 3: Install Dependencies**
-```bash
-# Install in editable mode
-pip install -e .
-
-# Or install specific dependencies
-pip install fastapi uvicorn sqlalchemy asyncpg aiosqlite pyjwt argon2-cffi \
-    redis slowapi boto3 torch torchvision pillow httpx alembic pytest
-```
-
-**Step 4: Configure Environment**
-```bash
-# Copy example environment file
-cp .env.example .env
-
-# Edit .env with your settings
-nano .env
-```
-
-**Step 5: Run Database Migrations**
-```bash
-# Ensure PostgreSQL or SQLite is configured
-alembic upgrade head
-```
-
-**Step 6: Start Development Server**
-```bash
-# Single worker (development)
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# With multiple workers (production-like)
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
-```
-
-**Step 7: Verify Installation**
-```bash
-# Test health endpoint
-curl http://localhost:8000/health
-
-# Access API documentation
-# Open browser: http://localhost:8000/docs
-```
-
-### 2.2 Production Deployment (Systemd)
-
-**Step 1: Create System User**
-```bash
-sudo useradd -r -s /bin/false khetopedia
-```
-
-**Step 2: Install Application**
-```bash
-sudo mkdir -p /opt/khetopedia
-sudo chown khetopedia:khetopedia /opt/khetopedia
-
-# Copy application files
-sudo cp -r backend /opt/khetopedia/
-sudo chown -R khetopedia:khetopedia /opt/khetopedia
-
-# Create virtual environment
-cd /opt/khetopedia/backend
-sudo -u khetopedia python3.11 -m venv venv
-sudo -u khetopedia venv/bin/pip install -e .
-```
-
-**Step 3: Configure Environment**
-```bash
-sudo cp /opt/khetopedia/backend/.env.example /opt/khetopedia/backend/.env
-sudo chown khetopedia:khetopedia /opt/khetopedia/backend/.env
-sudo chmod 600 /opt/khetopedia/backend/.env
-
-# Edit environment variables
-sudo nano /opt/khetopedia/backend/.env
-```
-
-**Step 4: Create Systemd Service**
-```bash
-sudo nano /etc/systemd/system/khetopedia.service
-```
-
-**Service File Content:**
-```ini
-[Unit]
-Description=Khetopedia FastAPI Backend
-After=network.target postgresql.service redis.service
-
-[Service]
-Type=notify
-User=khetopedia
-Group=khetopedia
-WorkingDirectory=/opt/khetopedia/backend
-Environment="PATH=/opt/khetopedia/backend/venv/bin"
-ExecStart=/opt/khetopedia/backend/venv/bin/uvicorn \
-    app.main:app \
-    --host 0.0.0.0 \
-    --port 8000 \
-    --workers 4 \
-    --log-config logging.conf
-
-# Restart policy
-Restart=always
-RestartSec=10
+# Redis
+REDIS_URL=redis://localhost:6379/0
 
 # Security
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths=/opt/khetopedia/backend/uploads
+SECRET_KEY=your-super-secret-key-min-32-chars
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-# Resource limits
-LimitNOFILE=65536
-MemoryMax=2G
+# S3 Storage
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=khetopedia-assets
 
-[Install]
-WantedBy=multi-user.target
+# External APIs
+OPENWEATHER_API_KEY=your_openweather_api_key
+OPENAI_API_KEY=your_openai_api_key
+
+# CORS
+CORS_ORIGINS=["http://localhost:3000","https://yourdomain.com"]
+
+# Environment
+ENVIRONMENT=production
+DEBUG=false
 ```
 
-**Step 5: Start Service**
-```bash
-# Reload systemd
-sudo systemctl daemon-reload
+### 3. Frontend Environment Variables
+Create `lib/config/environment.dart`:
 
-# Enable service on boot
-sudo systemctl enable khetopedia
-
-# Start service
-sudo systemctl start khetopedia
-
-# Check status
-sudo systemctl status khetopedia
-
-# View logs
-sudo journalctl -u khetopedia -f
-```
-
-### 2.3 Docker Deployment
-
-**Step 1: Create Dockerfile**
-```dockerfile
-# File: backend/Dockerfile
-FROM python:3.11-slim
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    libmagic1 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create app user
-RUN useradd -m -s /bin/bash khetopedia
-
-# Set working directory
-WORKDIR /app
-
-# Copy requirements
-COPY pyproject.toml ./
-COPY app ./app
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -e .
-
-# Switch to app user
-USER khetopedia
-
-# Expose port
-EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8000/health')"
-
-# Start application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
-```
-
-**Step 2: Create Docker Compose File**
-```yaml
-# File: docker-compose.yml
-version: '3.8'
-
-services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: khetopedia-backend
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://khetopedia:${DB_PASSWORD}@postgres:5432/khetopedia
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=${SECRET_KEY}
-      - USE_REDIS=true
-      - USE_S3=true
-    depends_on:
-      - postgres
-      - redis
-    volumes:
-      - ./backend/uploads:/app/uploads
-    networks:
-      - khetopedia-network
-    restart: unless-stopped
-
-  postgres:
-    image: postgres:15-alpine
-    container_name: khetopedia-postgres
-    environment:
-      - POSTGRES_DB=khetopedia
-      - POSTGRES_USER=khetopedia
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    networks:
-      - khetopedia-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U khetopedia"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: khetopedia-redis
-    command: redis-server --appendonly yes
-    volumes:
-      - redis-data:/data
-    networks:
-      - khetopedia-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  nginx:
-    image: nginx:alpine
-    container_name: khetopedia-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - backend
-    networks:
-      - khetopedia-network
-    restart: unless-stopped
-
-volumes:
-  postgres-data:
-  redis-data:
-
-networks:
-  khetopedia-network:
-    driver: bridge
-```
-
-**Step 3: Create Environment File**
-```bash
-# File: .env
-SECRET_KEY=<generate-secure-key>
-DB_PASSWORD=<secure-postgres-password>
-```
-
-**Step 4: Deploy with Docker Compose**
-```bash
-# Build images
-docker-compose build
-
-# Start services
-docker-compose up -d
-
-# Check status
-docker-compose ps
-
-# View logs
-docker-compose logs -f backend
-
-# Run migrations
-docker-compose exec backend alembic upgrade head
-```
-
-### 2.4 NGINX Configuration
-
-**Create NGINX Config:**
-```nginx
-# File: nginx.conf
-upstream khetopedia_backend {
-    server backend:8000;
-}
-
-server {
-    listen 80;
-    server_name api.khetopedia.com;
-
-    # Redirect to HTTPS
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name api.khetopedia.com;
-
-    # SSL Configuration
-    ssl_certificate /etc/nginx/ssl/fullchain.pem;
-    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-    ssl_prefer_server_ciphers on;
-
-    # Security Headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "DENY" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-
-    # Client Body Size (for image uploads)
-    client_max_body_size 20M;
-
-    # Timeouts
-    proxy_connect_timeout 60s;
-    proxy_send_timeout 60s;
-    proxy_read_timeout 60s;
-
-    # Proxy to Backend
-    location / {
-        proxy_pass http://khetopedia_backend;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Static files (if any)
-    location /static/ {
-        alias /opt/khetopedia/static/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
-
-    # Health check endpoint (bypass proxy for load balancer)
-    location /health {
-        access_log off;
-        proxy_pass http://khetopedia_backend;
-    }
+```dart
+class Environment {
+  static const String apiBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:8000/api/v1',
+  );
+  
+  static const String wsBaseUrl = String.fromEnvironment(
+    'WS_BASE_URL',
+    defaultValue: 'ws://localhost:8000/ws',
+  );
+  
+  static const bool isProduction = bool.fromEnvironment(
+    'PRODUCTION',
+    defaultValue: false,
+  );
 }
 ```
 
 ---
 
-## 3. Database Setup
+## Database Setup (PostgreSQL)
 
-### 3.1 PostgreSQL Installation
+### Option 1: Local PostgreSQL Installation
 
-**Ubuntu/Debian:**
-```bash
+#### Windows
+```powershell
 # Install PostgreSQL
-sudo apt update
-sudo apt install postgresql postgresql-contrib
+winget install PostgreSQL.PostgreSQL
 
-# Start PostgreSQL
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
-```
-
-**macOS (Homebrew):**
-```bash
-brew install postgresql@15
-brew services start postgresql@15
-```
-
-**Windows:**
-- Download installer from https://www.postgresql.org/download/windows/
-- Run installer and follow prompts
-
-### 3.2 Database Creation
-
-```bash
-# Switch to postgres user
-sudo -u postgres psql
+# Start PostgreSQL service
+Start-Service postgresql-x64-15
 
 # Create database and user
-CREATE DATABASE khetopedia;
-CREATE USER khetopedia WITH PASSWORD 'your-secure-password';
-GRANT ALL PRIVILEGES ON DATABASE khetopedia TO khetopedia;
+psql -U postgres
+```
 
-# Exit psql
+```sql
+CREATE DATABASE khetopedia_db;
+CREATE USER khetopedia_user WITH PASSWORD 'secure_password';
+GRANT ALL PRIVILEGES ON DATABASE khetopedia_db TO khetopedia_user;
 \q
 ```
 
-### 3.3 Connection Configuration
-
-**Update .env file:**
+#### Linux/macOS
 ```bash
-DATABASE_URL=postgresql+asyncpg://khetopedia:your-secure-password@localhost:5432/khetopedia
+# Install PostgreSQL
+sudo apt install postgresql  # Ubuntu/Debian
+brew install postgresql      # macOS
+
+# Start service
+sudo systemctl start postgresql  # Linux
+brew services start postgresql   # macOS
+
+# Create database
+sudo -u postgres psql
 ```
 
-**Connection Pooling Settings:**
-```python
-# In app/core/database.py (already configured)
-SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
-
-engine = create_async_engine(
-    SQLALCHEMY_DATABASE_URL,
-    echo=False,
-    pool_size=10,          # Number of persistent connections
-    max_overflow=20,       # Maximum overflow connections
-    pool_pre_ping=True,    # Verify connections before use
-    pool_recycle=3600,     # Recycle connections after 1 hour
-)
+```sql
+CREATE DATABASE khetopedia_db;
+CREATE USER khetopedia_user WITH PASSWORD 'secure_password';
+GRANT ALL PRIVILEGES ON DATABASE khetopedia_db TO khetopedia_user;
+\q
 ```
 
-### 3.4 Database Backup Strategy
+### Option 2: Docker PostgreSQL
 
-**Automated Backup Script:**
-```bash
-#!/bin/bash
-# File: /opt/khetopedia/scripts/backup.sh
+Create `backend/docker-compose.yml`:
 
-BACKUP_DIR="/opt/khetopedia/backups"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILE="$BACKUP_DIR/khetopedia_$TIMESTAMP.sql.gz"
+```yaml
+version: '3.8'
 
-# Create backup
-pg_dump -U khetopedia khetopedia | gzip > $BACKUP_FILE
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: khetopedia_postgres
+    environment:
+      POSTGRES_DB: khetopedia_db
+      POSTGRES_USER: khetopedia_user
+      POSTGRES_PASSWORD: secure_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
 
-# Remove backups older than 30 days
-find $BACKUP_DIR -name "*.sql.gz" -mtime +30 -delete
+  redis:
+    image: redis:7-alpine
+    container_name: khetopedia_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
 
-echo "Backup completed: $BACKUP_FILE"
+volumes:
+  postgres_data:
+  redis_data:
 ```
 
-**Setup Cron Job:**
-```bash
-# Edit crontab
-crontab -e
-
-# Add daily backup at 2 AM
-0 2 * * * /opt/khetopedia/scripts/backup.sh >> /var/log/khetopedia-backup.log 2>&1
-```
-
-### 3.5 Database Restore
-
-```bash
-# Restore from backup
-gunzip < backup_file.sql.gz | psql -U khetopedia khetopedia
-```
-
----
-
-## 4. Redis Configuration
-
-### 4.1 Redis Installation
-
-**Ubuntu/Debian:**
-```bash
-sudo apt update
-sudo apt install redis-server
-
-# Start Redis
-sudo systemctl start redis-server
-sudo systemctl enable redis-server
-```
-
-**macOS (Homebrew):**
-```bash
-brew install redis
-brew services start redis
-```
-
-**Windows:**
-- Use WSL2 and follow Ubuntu instructions
-- Or use Docker: `docker run -d -p 6379:6379 redis:7-alpine`
-
-### 4.2 Redis Configuration
-
-**Edit Redis Config:**
-```bash
-sudo nano /etc/redis/redis.conf
-```
-
-**Recommended Settings:**
-```ini
-# Bind to localhost only (if backend is on same server)
-bind 127.0.0.1
-
-# Require password
-requirepass your-redis-password
-
-# Enable persistence (AOF for token blocklist durability)
-appendonly yes
-appendfilename "appendonly.aof"
-
-# Memory management
-maxmemory 2gb
-maxmemory-policy allkeys-lru
-
-# Save snapshots
-save 900 1
-save 300 10
-save 60 10000
-```
-
-**Restart Redis:**
-```bash
-sudo systemctl restart redis-server
-```
-
-### 4.3 Application Configuration
-
-**Update .env file:**
-```bash
-USE_REDIS=true
-REDIS_URL=redis://:your-redis-password@localhost:6379/0
-
-# Cache TTL settings
-CACHE_TTL_WEATHER=1800      # 30 minutes
-CACHE_TTL_DASHBOARD=300     # 5 minutes
-CACHE_TTL_PREDICTIONS=604800 # 7 days
-```
-
-### 4.4 Redis Monitoring
-
-**Check Redis Status:**
-```bash
-# Connect to Redis CLI
-redis-cli -a your-redis-password
-
-# Check info
-INFO
-
-# Monitor commands
-MONITOR
-
-# Check memory usage
-MEMORY STATS
-
-# Exit
-EXIT
-```
-
----
-
-## 5. Object Storage Setup
-
-### 5.1 AWS S3 Setup
-
-**Step 1: Create S3 Bucket**
-```bash
-# Using AWS CLI
-aws s3 mb s3://khetopedia-uploads --region us-east-1
-
-# Enable versioning (optional)
-aws s3api put-bucket-versioning \
-    --bucket khetopedia-uploads \
-    --versioning-configuration Status=Enabled
-```
-
-**Step 2: Configure Bucket Policy**
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "PublicReadGetObject",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::khetopedia-uploads/*"
-    }
-  ]
-}
-```
-
-**Step 3: Enable Encryption**
-```bash
-aws s3api put-bucket-encryption \
-    --bucket khetopedia-uploads \
-    --server-side-encryption-configuration '{
-        "Rules": [{
-            "ApplyServerSideEncryptionByDefault": {
-                "SSEAlgorithm": "AES256"
-            }
-        }]
-    }'
-```
-
-**Step 4: Create IAM User**
-```bash
-# Create IAM user for application
-aws iam create-user --user-name khetopedia-app
-
-# Attach S3 policy
-aws iam attach-user-policy \
-    --user-name khetopedia-app \
-    --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
-
-# Create access key
-aws iam create-access-key --user-name khetopedia-app
-```
-
-**Step 5: Configure Application**
-```bash
-# Update .env
-USE_S3=true
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
-AWS_S3_BUCKET=khetopedia-uploads
-AWS_REGION=us-east-1
-```
-
-### 5.2 MinIO Setup (Self-Hosted Alternative)
-
-**Install MinIO:**
-```bash
-# Download MinIO
-wget https://dl.min.io/server/minio/release/linux-amd64/minio
-chmod +x minio
-sudo mv minio /usr/local/bin/
-
-# Create data directory
-sudo mkdir -p /opt/minio/data
-sudo chown -R khetopedia:khetopedia /opt/minio
-```
-
-**Create Systemd Service:**
-```ini
-[Unit]
-Description=MinIO Object Storage
-After=network.target
-
-[Service]
-Type=notify
-User=khetopedia
-Group=khetopedia
-ExecStart=/usr/local/bin/minio server /opt/minio/data --console-address ":9001"
-Environment="MINIO_ROOT_USER=minioadmin"
-Environment="MINIO_ROOT_PASSWORD=your-secure-password"
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
-```
-
-**Start MinIO:**
-```bash
-sudo systemctl daemon-reload
-sudo systemctl start minio
-sudo systemctl enable minio
-
-# Access console: http://localhost:9001
-```
-
-**Configure Application:**
-```bash
-# Update .env
-USE_S3=true
-AWS_ACCESS_KEY_ID=minioadmin
-AWS_SECRET_ACCESS_KEY=your-secure-password
-AWS_S3_BUCKET=khetopedia-uploads
-AWS_ENDPOINT_URL=http://localhost:9000
-```
-
-### 5.3 Filesystem Fallback
-
-**For development or small deployments:**
-```bash
-# Update .env
-USE_S3=false
-UPLOAD_DIR=./uploads
-
-# Create upload directory
-mkdir -p /opt/khetopedia/backend/uploads
-chown khetopedia:khetopedia /opt/khetopedia/backend/uploads
-```
-
-**Note:** Filesystem storage is not recommended for production with multiple backend instances.
-
----
-
-## 6. Frontend Deployment
-
-### 6.1 Development Setup
-
-**Step 1: Install Flutter**
-```bash
-# Download Flutter SDK
-git clone https://github.com/flutter/flutter.git -b stable
-export PATH="$PATH:`pwd`/flutter/bin"
-
-# Verify installation
-flutter doctor
-```
-
-**Step 2: Install Dependencies**
-```bash
-cd khetopedia
-flutter pub get
-```
-
-**Step 3: Run Development Build**
-```bash
-# Android emulator
-flutter run
-
-# iOS simulator (macOS only)
-flutter run -d ios
-
-# Web (for testing)
-flutter run -d chrome
-```
-
-### 6.2 Configure Backend URL
-
-**Edit environment configuration:**
-```dart
-// File: lib(frontend)/core/config/app_config.dart
-class AppConfig {
-  // Development
-  static const String devApiUrl = 'http://localhost:8000';
-  
-  // Production
-  static const String prodApiUrl = 'https://api.khetopedia.com';
-  
-  // Get current API URL based on build mode
-  static String get apiUrl {
-    return const bool.fromEnvironment('dart.vm.product')
-        ? prodApiUrl
-        : devApiUrl;
-  }
-}
-```
-
-### 6.3 Android Build & Release
-
-**Step 1: Configure Signing**
-```bash
-# Generate keystore
-keytool -genkey -v -keystore ~/khetopedia-release-key.jks \
-    -keyalg RSA -keysize 2048 -validity 10000 \
-    -alias khetopedia
-```
-
-**Step 2: Configure Gradle**
-```groovy
-// File: android/app/build.gradle
-
-android {
-    ...
-    
-    signingConfigs {
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-            storePassword keystoreProperties['storePassword']
-        }
-    }
-    
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled true
-            shrinkResources true
-        }
-    }
-}
-```
-
-**Step 3: Build APK/Bundle**
-```bash
-# Build APK
-flutter build apk --release
-
-# Build App Bundle (for Play Store)
-flutter build appbundle --release
-
-# Output location:
-# APK: build/app/outputs/flutter-apk/app-release.apk
-# Bundle: build/app/outputs/bundle/release/app-release.aab
-```
-
-**Step 4: Upload to Play Store**
-1. Create developer account at https://play.google.com/console
-2. Create new application
-3. Upload app bundle
-4. Complete store listing
-5. Submit for review
-
-### 6.4 iOS Build & Release
-
-**Step 1: Configure Xcode**
-```bash
-# Open Xcode project
-open ios/Runner.xcworkspace
-
-# In Xcode:
-# 1. Select Runner project
-# 2. Go to Signing & Capabilities
-# 3. Select your development team
-# 4. Set bundle identifier
-```
-
-**Step 2: Build IPA**
-```bash
-# Build for iOS
-flutter build ios --release
-
-# Archive in Xcode:
-# Product -> Archive -> Distribute App
-```
-
-**Step 3: Upload to App Store**
-1. Create App Store Connect account
-2. Create new app
-3. Upload IPA via Xcode or Transporter
-4. Complete app information
-5. Submit for review
-
-### 6.5 Web Deployment (Optional)
-
-**Build Web App:**
-```bash
-# Build for web
-flutter build web --release
-
-# Output: build/web/
-```
-
-**Deploy to NGINX:**
-```nginx
-server {
-    listen 80;
-    server_name app.khetopedia.com;
-    
-    root /var/www/khetopedia;
-    index index.html;
-    
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-```
-
----
-
-## 7. Environment Configuration
-
-### 7.1 Backend Environment Variables
-
-**Complete .env Template:**
-```bash
-# ═══════════════════════════════════════════════
-# KHETOPEDIA BACKEND CONFIGURATION
-# ═══════════════════════════════════════════════
-
-# ────────────────────────────────────────────────
-# Application Settings
-# ────────────────────────────────────────────────
-APP_NAME=Khetopedia
-APP_VERSION=1.0.0
-ENVIRONMENT=production  # development, staging, production
-DEBUG=false
-
-# ────────────────────────────────────────────────
-# Security (⚠️ CHANGE IN PRODUCTION)
-# ────────────────────────────────────────────────
-SECRET_KEY=your-secret-key-min-32-characters-long-change-in-production
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=1440  # 24 hours
-REFRESH_TOKEN_EXPIRE_DAYS=30
-
-# ────────────────────────────────────────────────
-# Database Configuration
-# ────────────────────────────────────────────────
-# PostgreSQL (Production - REQUIRED)
-DATABASE_URL=postgresql+asyncpg://khetopedia:secure-password@localhost:5432/khetopedia
-
-# SQLite (Development only - NOT for production)
-# DATABASE_URL=sqlite+aiosqlite:///./khetopedia.db
-
-# ────────────────────────────────────────────────
-# Redis Configuration
-# ────────────────────────────────────────────────
-USE_REDIS=true
-REDIS_URL=redis://:redis-password@localhost:6379/0
-CACHE_TTL_WEATHER=1800       # 30 minutes
-CACHE_TTL_DASHBOARD=300      # 5 minutes
-CACHE_TTL_PREDICTIONS=604800 # 7 days
-
-# ────────────────────────────────────────────────
-# CORS Settings
-# ────────────────────────────────────────────────
-CORS_ORIGINS=["https://app.khetopedia.com","https://api.khetopedia.com"]
-
-# ────────────────────────────────────────────────
-# Object Storage (S3/MinIO)
-# ────────────────────────────────────────────────
-USE_S3=true
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
-AWS_S3_BUCKET=khetopedia-uploads
-AWS_REGION=us-east-1
-# AWS_ENDPOINT_URL=http://localhost:9000  # For MinIO
-
-# Filesystem fallback (if USE_S3=false)
-UPLOAD_DIR=./uploads
-
-# ────────────────────────────────────────────────
-# Weather API
-# ────────────────────────────────────────────────
-USE_MOCK_WEATHER=false
-OPENWEATHER_API_KEY=your-openweather-api-key
-WEATHER_CACHE_TTL=1800  # 30 minutes
-
-# ────────────────────────────────────────────────
-# AI/LLM Configuration
-# ────────────────────────────────────────────────
-USE_LLM=true
-LLM_PROVIDER=openai  # openai, anthropic
-OPENAI_API_KEY=your-openai-api-key
-# ANTHROPIC_API_KEY=your-anthropic-api-key
-
-# ────────────────────────────────────────────────
-# Email Configuration (SMTP)
-# ────────────────────────────────────────────────
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-SMTP_FROM=noreply@khetopedia.com
-SMTP_FROM_NAME=Khetopedia
-
-# ────────────────────────────────────────────────
-# ML Model Configuration
-# ────────────────────────────────────────────────
-ML_MODEL_PATH=./models/crop_disease_model.pth
-ML_MODEL_DEVICE=cpu  # cpu, cuda
-ML_CONFIDENCE_THRESHOLD=0.5
-
-# ────────────────────────────────────────────────
-# Rate Limiting
-# ────────────────────────────────────────────────
-RATE_LIMIT_ENABLED=true
-RATE_LIMIT_STORAGE=redis  # memory, redis
-RATE_LIMIT_DEFAULT=100/minute
-RATE_LIMIT_AUTH=10/hour
-RATE_LIMIT_SCAN=20/hour
-
-# ────────────────────────────────────────────────
-# File Upload Limits
-# ────────────────────────────────────────────────
-MAX_UPLOAD_SIZE=10485760  # 10 MB in bytes
-ALLOWED_IMAGE_TYPES=["image/jpeg","image/png","image/webp"]
-
-# ────────────────────────────────────────────────
-# Logging
-# ────────────────────────────────────────────────
-LOG_LEVEL=INFO  # DEBUG, INFO, WARNING, ERROR, CRITICAL
-LOG_FORMAT=json  # text, json
-```
-
-### 7.2 Security Best Practices
-
-**Generate Secure SECRET_KEY:**
-```python
-import secrets
-print(secrets.token_urlsafe(32))
-```
-
-**Or using OpenSSL:**
-```bash
-openssl rand -base64 32
-```
-
-**Environment Variable Security:**
-- Never commit .env files to version control
-- Use environment-specific files (.env.production, .env.staging)
-- Use secret management tools (AWS Secrets Manager, HashiCorp Vault)
-- Rotate secrets regularly (SECRET_KEY, API keys, passwords)
-
-### 7.3 Frontend Configuration
-
-**Update API URL:**
-```dart
-// File: lib(frontend)/core/config/app_config.dart
-
-class AppConfig {
-  static const String apiUrl = String.fromEnvironment(
-    'API_URL',
-    defaultValue: 'https://api.khetopedia.com',
-  );
-  
-  // Build with custom API URL:
-  // flutter build apk --dart-define=API_URL=https://api.example.com
-}
-```
-
----
-
-## 8. Database Migrations
-
-### 8.1 Running Migrations
-
-**Check Current Version:**
+Start services:
 ```bash
 cd backend
+docker-compose up -d
+```
+
+### Run Migrations
+
+```bash
+cd backend
+
+# Activate virtual environment
+.venv\Scripts\activate  # Windows
+source .venv/bin/activate  # Linux/macOS
+
+# Run migrations
+alembic upgrade head
+
+# Verify migrations
 alembic current
 ```
 
-**View Migration History:**
-```bash
-alembic history --verbose
-```
+### Create Initial Admin User
 
-**Upgrade to Latest:**
-```bash
-alembic upgrade head
-```
+Create `backend/scripts/create_admin.py`:
 
-**Upgrade to Specific Version:**
-```bash
-alembic upgrade <revision_id>
-```
-
-**Downgrade:**
-```bash
-# Downgrade one version
-alembic downgrade -1
-
-# Downgrade to specific version
-alembic downgrade <revision_id>
-
-# Downgrade all
-alembic downgrade base
-```
-
-### 8.2 Creating New Migrations
-
-**Auto-generate Migration:**
-```bash
-alembic revision --autogenerate -m "Add new table or column"
-```
-
-**Manual Migration:**
-```bash
-alembic revision -m "Description of changes"
-```
-
-**Edit Generated Migration:**
 ```python
-# File: backend/alembic/versions/xxx_description.py
-
-from alembic import op
-import sqlalchemy as sa
-
-revision = 'xxx'
-down_revision = 'yyy'
-
-def upgrade() -> None:
-    # Add your upgrade logic
-    op.create_table(
-        'new_table',
-        sa.Column('id', sa.Integer(), primary_key=True),
-        sa.Column('name', sa.String(100), nullable=False),
-    )
-
-def downgrade() -> None:
-    # Add your downgrade logic
-    op.drop_table('new_table')
-```
-
-### 8.3 Migration Best Practices
-
-**Pre-Migration Checklist:**
-1. ✅ Backup database before migration
-2. ✅ Test migration on staging environment
-3. ✅ Review generated SQL
-4. ✅ Verify downgrade path works
-5. ✅ Check for data loss risks
-
-**Safe Migration Strategies:**
-- Add columns as nullable first, then populate, then make NOT NULL
-- Create new tables before dropping old ones
-- Use transactions for data migrations
-- Test with production-sized data sets
-
----
-
-## 9. Initial Setup & Seeding
-
-### 9.1 Create Admin User
-
-**Option 1: Using Python Script**
-```python
-# File: backend/scripts/create_admin.py
-
 import asyncio
-from app.core.database import get_db_session
-from app.core.security import get_password_hash
-from app.models.user import User
+from app.core.database import get_db
+from app.services.auth_service import AuthService
+from app.schemas.auth import UserRegister
 
 async def create_admin():
-    async for db in get_db_session():
-        admin = User(
+    async for db in get_db():
+        auth_service = AuthService(db)
+        
+        admin_data = UserRegister(
             email="admin@khetopedia.com",
-            name="Admin User",
-            hashed_password=get_password_hash("secure-admin-password"),
-            is_active=True,
+            password="Admin@12345",
+            full_name="Admin User",
+            phone_number="+919999999999",
+            language_preference="en"
         )
-        db.add(admin)
-        await db.commit()
-        print(f"Admin user created: {admin.email}")
+        
+        user = await auth_service.register_user(admin_data)
+        print(f"Admin user created: {user.email}")
+        break
 
 if __name__ == "__main__":
     asyncio.run(create_admin())
 ```
 
-**Run Script:**
+Run:
 ```bash
-cd backend
 python scripts/create_admin.py
 ```
 
-**Option 2: Using API**
-```bash
-curl -X POST http://localhost:8000/v1/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@khetopedia.com",
-    "password": "secure-admin-password",
-    "name": "Admin User",
-    "phone": "+1234567890"
-  }'
+---
+
+## Redis Setup
+
+### Option 1: Local Redis Installation
+
+#### Windows
+```powershell
+# Install Redis via WSL or Windows port
+# Download from: https://github.com/microsoftarchive/redis/releases
+# Or use WSL:
+wsl --install
+wsl
+sudo apt update
+sudo apt install redis-server
+sudo service redis-server start
 ```
 
-### 9.2 Seed Sample Data (Optional)
-
-**Create Seed Script:**
-```python
-# File: backend/scripts/seed_data.py
-
-import asyncio
-from app.core.database import get_db_session
-from app.models.user import User
-from app.models.farm import Farm
-from app.models.field import Field
-
-async def seed_data():
-    async for db in get_db_session():
-        # Create test user
-        user = User(...)
-        db.add(user)
-        await db.commit()
-        
-        # Create test farm
-        farm = Farm(user_id=user.id, ...)
-        db.add(farm)
-        await db.commit()
-        
-        # Create test fields
-        field = Field(farm_id=farm.id, ...)
-        db.add(field)
-        await db.commit()
-        
-        print("Sample data seeded successfully")
-
-if __name__ == "__main__":
-    asyncio.run(seed_data())
+#### Linux
+```bash
+sudo apt install redis-server
+sudo systemctl start redis
+sudo systemctl enable redis
 ```
 
-### 9.3 Verify Installation
-
-**Health Check:**
+#### macOS
 ```bash
-curl http://localhost:8000/health
-# Expected: {"status": "healthy"}
+brew install redis
+brew services start redis
 ```
 
-**API Documentation:**
-```bash
-# Open in browser
-http://localhost:8000/docs
-```
+### Option 2: Docker Redis (Already in docker-compose.yml above)
 
-**Test Authentication:**
+### Test Redis Connection
 ```bash
-# Login
-curl -X POST http://localhost:8000/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@khetopedia.com",
-    "password": "your-password"
-  }'
-
-# Expected: {"access_token": "...", "refresh_token": "...", ...}
+redis-cli ping
+# Should return: PONG
 ```
 
 ---
 
-## 10. Monitoring & Maintenance
+## S3 Storage Setup
 
-### 10.1 Application Monitoring
+### Option 1: AWS S3
 
-**Setup Sentry (Error Tracking):**
+1. **Create S3 Bucket**
+   - Go to AWS Console → S3
+   - Create bucket: `khetopedia-assets`
+   - Enable versioning
+   - Configure CORS:
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT", "POST", "DELETE"],
+    "AllowedOrigins": ["*"],
+    "ExposeHeaders": ["ETag"]
+  }
+]
+```
+
+2. **Create IAM User**
+   - Go to IAM → Users → Add user
+   - Attach policy: `AmazonS3FullAccess` (or custom policy)
+   - Save Access Key ID and Secret Access Key
+
+3. **Set Lifecycle Rules** (Optional)
+   - Transition to Glacier after 90 days
+   - Delete after 365 days
+
+### Option 2: MinIO (Self-hosted S3-compatible)
+
+Add to `docker-compose.yml`:
+
+```yaml
+  minio:
+    image: minio/minio
+    container_name: khetopedia_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+volumes:
+  minio_data:
+```
+
+Update `.env`:
 ```bash
-pip install sentry-sdk[fastapi]
+AWS_ACCESS_KEY_ID=minioadmin
+AWS_SECRET_ACCESS_KEY=minioadmin
+AWS_ENDPOINT_URL=http://localhost:9000
+S3_BUCKET_NAME=khetopedia-assets
 ```
 
-```python
-# File: app/main.py
-
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-
-sentry_sdk.init(
-    dsn="your-sentry-dsn",
-    integrations=[FastApiIntegration()],
-    traces_sample_rate=0.1,
-    environment=settings.ENVIRONMENT,
-)
-```
-
-**Setup Prometheus (Metrics):**
+Create bucket:
 ```bash
-pip install prometheus-fastapi-instrumentator
+# Install MinIO client
+wget https://dl.min.io/client/mc/release/windows-amd64/mc.exe
+
+# Configure
+mc alias set myminio http://localhost:9000 minioadmin minioadmin
+
+# Create bucket
+mc mb myminio/khetopedia-assets
 ```
 
-```python
-# File: app/main.py
+---
 
-from prometheus_fastapi_instrumentator import Instrumentator
+## Backend Deployment
 
-app = FastAPI()
-Instrumentator().instrument(app).expose(app)
+### Development Mode
 
-# Metrics available at: /metrics
+```bash
+cd backend
+.venv\Scripts\activate  # Windows
+
+# Install dependencies
+uv pip install -e .
+
+# Run with auto-reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 10.2 Log Aggregation
+### Production Mode (Gunicorn + Uvicorn Workers)
 
-**Setup Structured Logging:**
+Install production dependencies:
+```bash
+uv pip install gunicorn
+```
+
+Create `backend/gunicorn_conf.py`:
+
 ```python
-# File: app/core/logging.py
+import multiprocessing
 
+# Server socket
+bind = "0.0.0.0:8000"
+backlog = 2048
+
+# Worker processes
+workers = multiprocessing.cpu_count() * 2 + 1
+worker_class = "uvicorn.workers.UvicornWorker"
+worker_connections = 1000
+max_requests = 1000
+max_requests_jitter = 50
+timeout = 120
+keepalive = 5
+
+# Logging
+accesslog = "-"
+errorlog = "-"
+loglevel = "info"
+access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"'
+
+# Process naming
+proc_name = "khetopedia"
+
+# Server mechanics
+daemon = False
+pidfile = None
+umask = 0
+user = None
+group = None
+tmp_upload_dir = None
+
+# SSL (if needed)
+# keyfile = "/path/to/key.pem"
+# certfile = "/path/to/cert.pem"
+```
+
+Run production server:
+```bash
+gunicorn app.main:app -c gunicorn_conf.py
+```
+
+### Systemd Service (Linux)
+
+Create `/etc/systemd/system/khetopedia-backend.service`:
+
+```ini
+[Unit]
+Description=Khetopedia Backend API
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/khetopedia/backend
+Environment="PATH=/var/www/khetopedia/backend/.venv/bin"
+ExecStart=/var/www/khetopedia/backend/.venv/bin/gunicorn app.main:app -c gunicorn_conf.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable khetopedia-backend
+sudo systemctl start khetopedia-backend
+sudo systemctl status khetopedia-backend
+```
+
+### Docker Deployment
+
+Create `backend/Dockerfile`:
+
+```dockerfile
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN pip install uv
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies
+RUN uv pip install --system -e .
+
+# Copy application
+COPY app ./app
+COPY alembic ./alembic
+COPY alembic.ini ./
+
+# Expose port
+EXPOSE 8000
+
+# Run migrations and start server
+CMD ["sh", "-c", "alembic upgrade head && gunicorn app.main:app -c gunicorn_conf.py"]
+```
+
+Build and run:
+```bash
+docker build -t khetopedia-backend .
+docker run -p 8000:8000 --env-file .env khetopedia-backend
+```
+
+---
+
+## Frontend Deployment
+
+### Development Mode
+
+```bash
+flutter pub get
+flutter run
+```
+
+### Build for Production
+
+#### Android APK
+```bash
+flutter build apk --release
+
+# Output: build/app/outputs/flutter-apk/app-release.apk
+```
+
+#### Android App Bundle (for Play Store)
+```bash
+flutter build appbundle --release
+
+# Output: build/app/outputs/bundle/release/app-release.aab
+```
+
+#### iOS (macOS only)
+```bash
+flutter build ios --release
+
+# Open in Xcode:
+open ios/Runner.xcworkspace
+```
+
+#### Web
+```bash
+flutter build web --release
+
+# Output: build/web/
+```
+
+### Configure API Endpoint
+
+Build with production API:
+```bash
+flutter build apk --release --dart-define=API_BASE_URL=https://api.khetopedia.com/api/v1 --dart-define=PRODUCTION=true
+```
+
+### Deploy Web Version
+
+1. **Static Hosting (Netlify/Vercel)**
+   ```bash
+   flutter build web --release
+   
+   # Deploy build/web/ folder
+   netlify deploy --prod --dir=build/web
+   ```
+
+2. **Nginx Configuration**
+   ```nginx
+   server {
+       listen 80;
+       server_name khetopedia.com;
+       
+       root /var/www/khetopedia/web;
+       index index.html;
+       
+       location / {
+           try_files $uri $uri/ /index.html;
+       }
+       
+       location /api/ {
+           proxy_pass http://localhost:8000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+       }
+   }
+   ```
+
+### App Store Deployment
+
+#### Google Play Store
+1. Create keystore:
+   ```bash
+   keytool -genkey -v -keystore khetopedia.jks -keyalg RSA -keysize 2048 -validity 10000 -alias khetopedia
+   ```
+
+2. Configure `android/key.properties`:
+   ```properties
+   storePassword=your_store_password
+   keyPassword=your_key_password
+   keyAlias=khetopedia
+   storeFile=../khetopedia.jks
+   ```
+
+3. Update `android/app/build.gradle`:
+   ```gradle
+   def keystoreProperties = new Properties()
+   def keystorePropertiesFile = rootProject.file('key.properties')
+   if (keystorePropertiesFile.exists()) {
+       keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+   }
+   
+   android {
+       signingConfigs {
+           release {
+               keyAlias keystoreProperties['keyAlias']
+               keyPassword keystoreProperties['keyPassword']
+               storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+               storePassword keystoreProperties['storePassword']
+           }
+       }
+       buildTypes {
+           release {
+               signingConfig signingConfigs.release
+           }
+       }
+   }
+   ```
+
+4. Build and upload:
+   ```bash
+   flutter build appbundle --release
+   # Upload to Play Console
+   ```
+
+#### Apple App Store
+1. Configure signing in Xcode
+2. Build archive
+3. Upload via Xcode or Transporter
+
+---
+
+## ML Model Setup
+
+### Download Pre-trained Model
+
+The disease detection model expects a ResNet-50 trained on PlantVillage dataset.
+
+#### Option 1: Train Your Own Model
+
+Create `backend/scripts/train_model.py`:
+
+```python
+import torch
+import torch.nn as nn
+import torchvision
+from torchvision import transforms, datasets
+from torch.utils.data import DataLoader
+
+def train_model():
+    # Data transforms
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
+    
+    # Load PlantVillage dataset
+    train_dataset = datasets.ImageFolder('path/to/plantvillage/train', transform=transform)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    
+    # Model
+    model = torchvision.models.resnet50(pretrained=True)
+    num_classes = len(train_dataset.classes)
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
+    
+    # Training
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    
+    for epoch in range(10):
+        model.train()
+        for images, labels in train_loader:
+            images, labels = images.to(device), labels.to(device)
+            
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        
+        print(f'Epoch {epoch+1}, Loss: {loss.item():.4f}')
+    
+    # Save model
+    torch.save(model.state_dict(), 'crop_disease_model.pth')
+    torch.save(train_dataset.classes, 'class_names.pth')
+
+if __name__ == '__main__':
+    train_model()
+```
+
+#### Option 2: Use Pre-trained Model
+
+Download from model zoo or Hugging Face and place in:
+```
+backend/models/crop_disease_model.pth
+backend/models/class_names.pth
+```
+
+### Update Model Path
+
+Update `backend/app/services/crop_scanner_service.py`:
+
+```python
+MODEL_PATH = Path(__file__).parent.parent.parent / "models" / "crop_disease_model.pth"
+CLASS_NAMES_PATH = Path(__file__).parent.parent.parent / "models" / "class_names.pth"
+```
+
+---
+
+## Monitoring & Logging
+
+### Application Logging
+
+Update `backend/app/main.py`:
+
+```python
 import logging
-import json
-from datetime import datetime
-
-class JSONFormatter(logging.Formatter):
-    def format(self, record):
-        log_data = {
-            "timestamp": datetime.utcnow().isoformat(),
-            "level": record.levelname,
-            "message": record.getMessage(),
-            "module": record.module,
-            "function": record.funcName,
-        }
-        if record.exc_info:
-            log_data["exception"] = self.formatException(record.exc_info)
-        return json.dumps(log_data)
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-handler = logging.StreamHandler()
-handler.setFormatter(JSONFormatter())
-logging.getLogger().addHandler(handler)
-```
-
-**Log Rotation:**
-```python
 from logging.handlers import RotatingFileHandler
 
-handler = RotatingFileHandler(
-    "app.log",
-    maxBytes=10485760,  # 10MB
-    backupCount=5,
+# Configure logging
+log_formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+
+file_handler = RotatingFileHandler(
+    'logs/khetopedia.log',
+    maxBytes=10485760,  # 10MB
+    backupCount=10
+)
+file_handler.setFormatter(log_formatter)
+
+logger = logging.getLogger()
+logger.addHandler(file_handler)
+logger.setLevel(logging.INFO)
 ```
 
-### 10.3 Performance Monitoring
+### Health Check Endpoint
 
-**Database Query Monitoring:**
+Add to `backend/app/main.py`:
+
 ```python
-# File: app/core/database.py
-
-from sqlalchemy import event
-from sqlalchemy.engine import Engine
-import time
-import logging
-
-logger = logging.getLogger(__name__)
-
-@event.listens_for(Engine, "before_cursor_execute")
-def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    context._query_start_time = time.time()
-
-@event.listens_for(Engine, "after_cursor_execute")
-def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
-    total = time.time() - context._query_start_time
-    if total > 1.0:  # Log slow queries (> 1 second)
-        logger.warning(f"Slow query ({total:.2f}s): {statement}")
-```
-
-### 10.4 Health Checks
-
-**Enhanced Health Check Endpoint:**
-```python
-# File: app/api/v1/endpoints/health.py
-
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from redis import Redis
-import httpx
-
-router = APIRouter()
-
-@router.get("/health")
-async def health_check(db: AsyncSession = Depends(get_db)):
-    health = {
+@app.get("/health")
+async def health_check():
+    return {
         "status": "healthy",
-        "version": settings.APP_VERSION,
-        "checks": {}
+        "database": await check_database(),
+        "redis": await check_redis(),
+        "timestamp": datetime.utcnow().isoformat()
     }
-    
-    # Database check
-    try:
-        await db.execute("SELECT 1")
-        health["checks"]["database"] = "healthy"
-    except Exception as e:
-        health["checks"]["database"] = f"unhealthy: {str(e)}"
-        health["status"] = "unhealthy"
-    
-    # Redis check
-    try:
-        redis = Redis.from_url(settings.REDIS_URL)
-        redis.ping()
-        health["checks"]["redis"] = "healthy"
-    except Exception as e:
-        health["checks"]["redis"] = f"unhealthy: {str(e)}"
-    
-    # External API check (optional)
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(f"https://api.openweathermap.org/...")
-            health["checks"]["weather_api"] = "healthy"
-    except Exception:
-        health["checks"]["weather_api"] = "degraded"
-    
-    return health
 ```
 
-### 10.5 Maintenance Tasks
+### Monitoring Tools
 
-**Weekly Tasks:**
-- Review error logs
-- Check database size and growth
-- Verify backup integrity
-- Review security alerts
+1. **Prometheus + Grafana**
+   - Add metrics endpoint
+   - Track request rates, latency, errors
 
-**Monthly Tasks:**
-- Update dependencies (security patches)
-- Review and optimize slow queries
-- Analyze resource usage trends
-- Test disaster recovery procedures
+2. **Sentry** (Error Tracking)
+   ```bash
+   uv pip install sentry-sdk
+   ```
+   
+   ```python
+   import sentry_sdk
+   
+   sentry_sdk.init(
+       dsn="your_sentry_dsn",
+       environment="production"
+   )
+   ```
 
-**Quarterly Tasks:**
-- Rotate secrets and API keys
-- Review and update documentation
-- Perform load testing
-- Security audit
+3. **New Relic / DataDog** (APM)
+   - Install agent
+   - Monitor performance
 
 ---
 
-## 11. Troubleshooting
+## Production Checklist
 
-### 11.1 Common Issues
+### Security
+- [ ] Change all default passwords
+- [ ] Generate strong SECRET_KEY (min 32 chars)
+- [ ] Enable HTTPS/SSL
+- [ ] Configure CORS properly
+- [ ] Enable rate limiting
+- [ ] Implement API key rotation
+- [ ] Set up firewall rules
+- [ ] Enable database encryption at rest
+- [ ] Use environment variables (never commit secrets)
 
-**Issue: Backend won't start - ModuleNotFoundError**
+### Database
+- [ ] Run migrations
+- [ ] Set up automated backups
+- [ ] Configure connection pooling
+- [ ] Create indexes for performance
+- [ ] Set up replication (if needed)
+
+### Caching
+- [ ] Enable Redis in production
+- [ ] Configure cache TTLs
+- [ ] Set up Redis persistence
+
+### Storage
+- [ ] Configure S3 bucket
+- [ ] Set up CDN (CloudFront/Cloudflare)
+- [ ] Enable object versioning
+- [ ] Configure lifecycle policies
+
+### Backend
+- [ ] Set DEBUG=false
+- [ ] Configure production CORS
+- [ ] Set up process manager (systemd/supervisor)
+- [ ] Configure reverse proxy (Nginx/Apache)
+- [ ] Enable gzip compression
+- [ ] Set up SSL certificate (Let's Encrypt)
+- [ ] Configure logging
+- [ ] Set up monitoring
+
+### Frontend
+- [ ] Build release APK/AAB
+- [ ] Configure production API endpoint
+- [ ] Test on multiple devices
+- [ ] Optimize images and assets
+- [ ] Enable ProGuard/R8 (Android)
+- [ ] Test offline functionality
+- [ ] Verify deep links
+
+### ML Model
+- [ ] Download/train disease detection model
+- [ ] Place model files in correct location
+- [ ] Test predictions
+- [ ] Monitor inference performance
+
+### Testing
+- [ ] Run all unit tests
+- [ ] Run integration tests
+- [ ] Perform load testing
+- [ ] Test on real devices
+- [ ] Test all API endpoints
+- [ ] Verify authentication flows
+
+### Documentation
+- [ ] API documentation (Swagger/ReDoc)
+- [ ] User manual
+- [ ] Admin guide
+- [ ] Troubleshooting guide
+
+### Monitoring
+- [ ] Set up uptime monitoring
+- [ ] Configure error tracking (Sentry)
+- [ ] Set up log aggregation
+- [ ] Create dashboards (Grafana)
+- [ ] Set up alerts
+
+### Compliance
+- [ ] Privacy policy
+- [ ] Terms of service
+- [ ] GDPR compliance (if applicable)
+- [ ] Data retention policy
+
+---
+
+## Quick Start Commands
+
+### Full Stack Development
 ```bash
-# Solution: Reinstall dependencies
+# Terminal 1: Start PostgreSQL + Redis
+docker-compose up -d
+
+# Terminal 2: Backend
 cd backend
-pip install -e .
+.venv\Scripts\activate
+uvicorn app.main:app --reload
+
+# Terminal 3: Frontend
+flutter pub get
+flutter run
 ```
 
-**Issue: Database connection error**
+### Production Deployment
 ```bash
-# Check PostgreSQL is running
+# Backend
+cd backend
+alembic upgrade head
+gunicorn app.main:app -c gunicorn_conf.py
+
+# Frontend
+flutter build apk --release --dart-define=API_BASE_URL=https://api.khetopedia.com/api/v1
+```
+
+---
+
+## Troubleshooting
+
+### Database Connection Issues
+```bash
+# Check PostgreSQL status
 sudo systemctl status postgresql
 
-# Verify connection string
-psql postgresql://khetopedia:password@localhost:5432/khetopedia
+# Test connection
+psql -U khetopedia_user -d khetopedia_db -h localhost
 
 # Check logs
-sudo journalctl -u postgresql -f
+tail -f /var/log/postgresql/postgresql-15-main.log
 ```
 
-**Issue: Redis connection failed**
+### Redis Connection Issues
 ```bash
-# Check Redis is running
-sudo systemctl status redis-server
-
-# Test connection
+# Check Redis status
 redis-cli ping
 
-# Check password
-redis-cli -a your-password ping
+# Check connections
+redis-cli client list
+
+# Monitor commands
+redis-cli monitor
 ```
 
-**Issue: File upload fails**
+### Backend Issues
 ```bash
-# Check upload directory permissions
-ls -la /opt/khetopedia/backend/uploads
-chmod 755 uploads
-chown khetopedia:khetopedia uploads
+# Check logs
+tail -f logs/khetopedia.log
 
-# Check S3 credentials
-aws s3 ls s3://khetopedia-uploads --profile khetopedia
+# Test health endpoint
+curl http://localhost:8000/health
+
+# Check running processes
+ps aux | grep gunicorn
 ```
 
-**Issue: ML model not loading**
+### Flutter Build Issues
 ```bash
-# Check model file exists
-ls -lh backend/models/crop_disease_model.pth
+# Clean build
+flutter clean
+flutter pub get
 
-# Check Python dependencies
-pip list | grep torch
+# Check doctor
+flutter doctor -v
 
-# Check memory availability
-free -h
-```
-
-**Issue: Rate limiting not working**
-```bash
-# Verify Redis is connected
-redis-cli -a password
-127.0.0.1:6379> KEYS slowapi:*
-
-# Check USE_REDIS setting
-grep USE_REDIS .env
-```
-
-### 11.2 Performance Issues
-
-**Issue: Slow API responses**
-```python
-# Enable query logging
-# File: .env
-DEBUG=true
-
-# Check slow queries in logs
-sudo journalctl -u khetopedia -f | grep "Slow query"
-```
-
-**Issue: High memory usage**
-```bash
-# Check process memory
-ps aux | grep uvicorn
-
-# Check for memory leaks
-# Use memory profiler
-pip install memory-profiler
-python -m memory_profiler app/main.py
-```
-
-**Issue: Database connection pool exhausted**
-```python
-# Increase pool size
-# File: app/core/database.py
-engine = create_async_engine(
-    DATABASE_URL,
-    pool_size=20,  # Increase from 10
-    max_overflow=40,  # Increase from 20
-)
-```
-
-### 11.3 Getting Help
-
-**Check Logs:**
-```bash
-# Backend logs (systemd)
-sudo journalctl -u khetopedia -f
-
-# Backend logs (Docker)
-docker-compose logs -f backend
-
-# NGINX logs
-sudo tail -f /var/log/nginx/error.log
-
-# PostgreSQL logs
-sudo tail -f /var/log/postgresql/postgresql-15-main.log
-```
-
-**Debug Mode:**
-```bash
-# Enable debug mode temporarily
-# File: .env
-DEBUG=true
-
-# Restart application
-sudo systemctl restart khetopedia
+# Verbose build
+flutter build apk --release -v
 ```
 
 ---
 
-## 12. Security Checklist
+## Support & Resources
 
-### 12.1 Pre-Deployment Security Review
-
-**Configuration:**
-- [ ] SECRET_KEY changed from default
-- [ ] Database credentials are strong and unique
-- [ ] Redis password set
-- [ ] CORS origins restricted to production domains
-- [ ] DEBUG=false in production
-- [ ] HTTPS/TLS enabled
-- [ ] SSL certificates installed and auto-renewing
-
-**Authentication & Authorization:**
-- [ ] JWT secret is secure (32+ characters)
-- [ ] Token expiration times reviewed
-- [ ] Token blocklist enabled (Redis)
-- [ ] Password hashing verified (Argon2)
-- [ ] Rate limiting enabled
-- [ ] Admin endpoints protected
-
-**Data Protection:**
-- [ ] Database encryption at rest configured
-- [ ] S3 bucket encryption enabled
-- [ ] Backups encrypted
-- [ ] Sensitive data never logged
-- [ ] EXIF data stripping implemented (if required)
-
-**Network Security:**
-- [ ] Firewall configured (only ports 80, 443, 22 open)
-- [ ] SSH key-based authentication
-- [ ] Database not exposed to public internet
-- [ ] Redis not exposed to public internet
-- [ ] Internal services on private network
-
-**Application Security:**
-- [ ] All dependencies up to date
-- [ ] No known CVEs in dependencies
-- [ ] File upload validation active
-- [ ] File size limits enforced
-- [ ] SQL injection protection verified
-- [ ] XSS protection verified
-
-**Monitoring & Logging:**
-- [ ] Error tracking configured (Sentry)
-- [ ] Log aggregation configured
-- [ ] Security alerts configured
-- [ ] Uptime monitoring configured
-- [ ] Backup verification automated
-
-### 12.2 Post-Deployment Security
-
-**Continuous Monitoring:**
-- Review error logs daily
-- Monitor failed authentication attempts
-- Check for unusual traffic patterns
-- Review resource usage trends
-
-**Regular Updates:**
-- Apply security patches weekly
-- Update dependencies monthly
-- Rotate secrets quarterly
-- Review access logs monthly
-
-**Incident Response Plan:**
-1. Identify and contain the issue
-2. Preserve evidence (logs)
-3. Notify affected users if data breach
-4. Fix vulnerability
-5. Document incident
-6. Update security procedures
+- **Backend API Docs**: http://localhost:8000/docs
+- **Project Repository**: (your repo URL)
+- **Issue Tracker**: (your issue tracker)
+- **Documentation**: `docs/` folder
 
 ---
 
-## 13. Scaling Recommendations
+## Next Steps
 
-### 13.1 Horizontal Scaling
+1. Set up PostgreSQL and Redis
+2. Configure environment variables
+3. Run database migrations
+4. Download/train ML model
+5. Test backend APIs
+6. Build and test Flutter app
+7. Deploy to staging environment
+8. Perform load testing
+9. Deploy to production
+10. Monitor and maintain
 
-**Backend Scaling:**
-```bash
-# Add more uvicorn workers
-uvicorn app.main:app --workers 8
-
-# Or deploy multiple instances behind load balancer
-# Instance 1: server1.example.com:8000
-# Instance 2: server2.example.com:8000
-# Load balancer: api.example.com -> [server1, server2]
-```
-
-**Database Scaling:**
-- Implement read replicas for read-heavy workloads
-- Use connection pooling (already configured)
-- Consider database sharding for very large datasets
-
-**Caching:**
-- Redis cluster for distributed caching
-- CDN for static assets
-- Edge caching for API responses
-
-### 13.2 Vertical Scaling
-
-**Increase Resources:**
-- Upgrade to larger instance types
-- Add more CPU cores for ML inference
-- Add more RAM for larger models
-- Use SSD storage for database
-
-### 13.3 Performance Optimization
-
-**Database Optimization:**
-- Add indexes on frequently queried columns
-- Analyze and optimize slow queries
-- Implement database query caching
-- Use materialized views for complex queries
-
-**Application Optimization:**
-- Implement async job queue (Celery + Redis)
-- Optimize ML model (quantization, ONNX)
-- Implement response compression
-- Use HTTP/2
-
----
-
-## 14. Disaster Recovery
-
-### 14.1 Backup Strategy
-
-**What to Backup:**
-- PostgreSQL database (daily)
-- Redis data (if persistence enabled)
-- Uploaded images (S3 versioning)
-- Application configuration (.env files)
-- SSL certificates
-
-**Backup Retention:**
-- Daily backups: 7 days
-- Weekly backups: 4 weeks
-- Monthly backups: 12 months
-
-**Backup Verification:**
-- Test restore monthly
-- Document restore procedures
-- Measure RTO (Recovery Time Objective)
-- Measure RPO (Recovery Point Objective)
-
-### 14.2 Restore Procedures
-
-**Database Restore:**
-```bash
-# Stop application
-sudo systemctl stop khetopedia
-
-# Restore database
-gunzip < backup.sql.gz | psql -U khetopedia khetopedia
-
-# Restart application
-sudo systemctl start khetopedia
-```
-
-**Full System Recovery:**
-1. Provision new server
-2. Install dependencies
-3. Restore database from backup
-4. Restore configuration files
-5. Restore uploaded files from S3
-6. Update DNS (if needed)
-7. Verify functionality
-8. Monitor for issues
-
----
-
-## 15. Support & Resources
-
-**Documentation:**
-- Backend README: `backend/README.md`
-- API Docs: `http://localhost:8000/docs`
-- Final Review: `.agents/tasks/.../final-review.md`
-
-**External Resources:**
-- FastAPI: https://fastapi.tiangolo.com/
-- Flutter: https://flutter.dev/docs
-- PostgreSQL: https://www.postgresql.org/docs/
-- Redis: https://redis.io/documentation
-
-**Getting Help:**
-- Check troubleshooting section above
-- Review application logs
-- Check GitHub issues (if applicable)
-- Contact development team
-
----
-
-**Document Version:** 1.0.0  
-**Last Updated:** October 27, 2026  
-**Maintained by:** Khetopedia Development Team
+Good luck with your deployment! 🚀

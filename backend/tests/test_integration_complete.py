@@ -5,6 +5,7 @@ Tests all end-to-end flows with real database, Redis (if enabled), and storage.
 import io
 import uuid
 import pytest
+from PIL import Image
 from httpx import AsyncClient, ASGITransport
 
 from app.main import app
@@ -16,8 +17,8 @@ from app.core.config import settings
 # ══════════════════════════════════════════════════════════════════════════════
 
 def unique_email() -> str:
-    """Generate unique test email."""
-    return f"test.integration.{uuid.uuid4().hex[:8]}@khetopedia.test"
+    """Generate unique test email using a valid domain accepted by Pydantic EmailStr."""
+    return f"test.integration.{uuid.uuid4().hex[:8]}@example.com"
 
 
 async def create_test_user(client: AsyncClient) -> tuple[str, str, dict]:
@@ -43,9 +44,17 @@ def auth_headers(token: str) -> dict:
 
 
 def create_test_image(size_kb: int = 15) -> bytes:
-    """Create a minimal valid JPEG for testing."""
-    # JPEG magic bytes + padding
-    return b"\xff\xd8\xff\xe0\x00\x10JFIF" + b"\x00" * (size_kb * 1024)
+    """Create a minimal valid JPEG for testing using Pillow (>= 5 KB)."""
+    # 400×400 image at quality 95 produces a JPEG well above the 5KB minimum
+    img = Image.new("RGB", (400, 400), color=(34, 139, 34))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=95)
+    data = buf.getvalue()
+    # Pad if somehow still below minimum (shouldn't happen but be safe)
+    if len(data) < 6 * 1024:
+        padding = b"\xff" * (6 * 1024 - len(data))
+        data += padding
+    return data
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -149,7 +158,7 @@ async def test_complete_crop_scanner_flow():
         assert "crop_identified" in scan_result
         assert "disease_name" in scan_result
         assert "severity" in scan_result
-        assert "confidence_score" in scan_result
+        assert "disease_confidence" in scan_result
         assert "recommended_treatment" in scan_result
         assert scan_result["crop_identified"] is not None
         
@@ -160,7 +169,7 @@ async def test_complete_crop_scanner_flow():
         assert res.status_code == 200
         retrieved_scan = res.json()
         assert retrieved_scan["id"] == scan_id
-        assert "image_url" in retrieved_scan
+        assert "image_path" in retrieved_scan
         
         # 4. Retrieve scan history
         res = await client.get("/v1/crop-scans", headers=headers, params={"limit": 10})
@@ -294,9 +303,9 @@ async def test_recommendation_engine_flow():
             assert "category" in rec
             assert "title" in rec
             assert "description" in rec
-            assert "priority" in rec
-            assert rec["priority"] in ["high", "medium", "low"]
-            assert rec["category"] in ["irrigation", "fertilizer", "pesticide", "disease_management", "general"]
+            assert "urgency" in rec
+            assert rec["urgency"] in ["low", "medium", "high", "critical"]
+            assert rec["category"] in ["irrigation", "fertilizer", "pesticide", "disease_management", "soil_health", "general"]
         
         # 4. Get specific recommendation
         rec_id = recommendations[0]["id"]
@@ -490,8 +499,8 @@ async def test_dashboard_with_weather():
         assert "active_alerts" in dashboard
         
         stats = dashboard["stats"]
-        assert any(s["label"] == "Total Fields" for s in stats)
-        assert any(s["label"] == "Total Scans" for s in stats)
+        assert any(s["label"] == "Active Fields" for s in stats)
+        assert any(s["label"] == "Crop Health" for s in stats)
         
         # 3. Get weather data
         res = await client.get("/v1/weather", headers=headers, params={
@@ -576,10 +585,10 @@ async def test_storage_service():
         assert res.status_code == 201
         scan = res.json()
         
-        # Verify image URL is returned
-        assert "image_url" in scan
-        assert scan["image_url"] is not None
-        assert len(scan["image_url"]) > 0
+        # Verify image path is returned
+        assert "image_path" in scan
+        assert scan["image_path"] is not None
+        assert len(scan["image_path"]) > 0
         
         # Storage type indication
         if settings.USE_S3:
