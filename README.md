@@ -407,6 +407,45 @@ uvicorn app.main:app --reload
 
 ### Frontend Setup
 
+#### Option 1: Build APK (Android) ⭐ Recommended
+
+**Automated Build (Easiest):**
+```powershell
+# 1. Install Flutter (one-time, 10-15 min)
+# Right-click setup-flutter.ps1 → Run with PowerShell
+
+# 2. Build APK (5-10 min)
+# Right-click build-apk.ps1 → Run with PowerShell
+
+# APK location: build\app\outputs\flutter-apk\app-release.apk
+```
+
+**Manual Build:**
+```bash
+# 1. Install Flutter
+winget install --id=Google.Flutter -e
+
+# 2. Close and reopen terminal
+
+# 3. Navigate to project
+cd f:\khetopedia
+
+# 4. Get dependencies
+flutter pub get
+
+# 5. Add Android platform (first time only)
+flutter create --platforms android .
+
+# 6. Build release APK
+flutter build apk --release
+
+# APK location: build/app/outputs/flutter-apk/app-release.apk
+```
+
+**📖 See [QUICK_START_APK.md](./QUICK_START_APK.md) for detailed APK build instructions**
+
+#### Option 2: Run in Development Mode
+
 ```bash
 # 1. Navigate to frontend
 cd khetopedia
@@ -453,6 +492,9 @@ docker-compose logs -f
 | Document | Description | Location |
 |----------|-------------|----------|
 | **Completion Summary** | Project overview and accomplishments | [COMPLETION_SUMMARY.md](./COMPLETION_SUMMARY.md) |
+| **Quick Start APK** | ⭐ Build Android APK in 3 steps | [QUICK_START_APK.md](./QUICK_START_APK.md) |
+| **APK Build Guide** | Comprehensive APK building guide | [BUILD_APK_GUIDE.md](./BUILD_APK_GUIDE.md) |
+| **Dataset Upload Guide** | Upload datasets to cloud storage | [DATASET_UPLOAD_GUIDE.md](./DATASET_UPLOAD_GUIDE.md) |
 | **Deployment Guide** | Production deployment instructions | [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) |
 | **Backend README** | Backend setup and API reference | [backend/README.md](./backend/README.md) |
 | **API Documentation** | Interactive OpenAPI docs | `/docs` endpoint |
