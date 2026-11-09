@@ -5,8 +5,11 @@
 abstract final class ApiConstants {
   static const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://api.khetopedia.com/v1',
+    defaultValue: 'http://10.0.2.2:8000', // Android emulator localhost
   );
+  
+  // For physical device, change to: 'http://YOUR_IP:8000'
+  // For production, use: 'https://api.khetopedia.com/v1'
 
   // ── Timeouts ─────────────────────────────────────────────────────────────
   static const connectTimeoutMs = 10000;
